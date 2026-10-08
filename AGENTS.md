@@ -1,4 +1,4 @@
-# gym-management-app
+# lift-together
 
 React + Vite + Tailwind CSS project running inside Figma Make.
 

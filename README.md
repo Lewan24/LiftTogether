@@ -1,4 +1,4 @@
-# Campus Gym
+# Lift Together
 
 React 19, TypeScript, Vite and Tailwind CSS 4. Run npm install, npm run dev, npm run build, npm test. Node 24 is recommended. The build includes strict TypeScript checks.
 
