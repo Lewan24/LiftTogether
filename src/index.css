@@ -1,0 +1,77 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Manrope", sans-serif;
+  --font-sans: "DM Sans", sans-serif;
+}
+
+@layer base {
+  :root {
+    --ink: #12211b;
+    --ink-soft: #52635b;
+    --paper: #f6f7f2;
+    --white: #ffffff;
+    --line: #dfe5df;
+    --line-dark: #cad3cc;
+    --green: #166534;
+    --green-dark: #0c3d27;
+    --green-pale: #e7f2e9;
+    --lime: #c8e65b;
+    --blue: #dfecef;
+    --yellow: #f2e8b8;
+    --peach: #f2d8c7;
+    --red: #a63d36;
+    --shadow: 0 16px 50px rgba(29, 50, 39, 0.08);
+    font-family: "DM Sans", sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    font-synthesis: none;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100dvh;
+  }
+  html {
+    color-scheme: light;
+  }
+  p,
+  h1,
+  h2,
+  h3 {
+    margin: 0;
+  }
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+  button,
+  a {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 3px solid var(--green);
+    outline-offset: 3px;
+  }
+  dialog::backdrop {
+    background: rgb(8 28 18 / 64%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,74 @@
+[
+  {
+    "repo": "vercel-labs/agent-skills",
+    "path": "skills/web-design-guidelines",
+    "name": "web-design-guidelines",
+    "ref": "063bee94c3f4df8453406c830b0a7df0f2860278",
+    "blob": "ceae92ab319216a68274168fba9b63b998b65997",
+    "license": "MIT declared in upstream README; complete license notice unavailable",
+    "slug": "vercel-web-design-guidelines",
+    "task": "Install Web Design Guidelines",
+    "verification": "passed: exact reviewed Git blob, pinned source byte match, valid frontmatter, minimal file inventory",
+    "sha256": "f4647ca866a3accf763777f83e7682954f0187cd6bea7eea0399796652414e8f",
+    "report": {
+      "payload": {
+        "event_id": "install_e1b859ec2abd483e86b71ce7acbcc1ff",
+        "skill_slug": "vercel-web-design-guidelines",
+        "task": "Install Web Design Guidelines",
+        "agent": "codex",
+        "outcome": "success",
+        "install_used": true
+      },
+      "http_status": 200,
+      "response": "{\"ok\":true,\"success\":true,\"message\":\"Agent outcome recorded\",\"event_id\":\"install_e1b859ec2abd483e86b71ce7acbcc1ff\",\"skill_slug\":\"vercel-web-design-guidelines\",\"outcome\":\"success\",\"stats\":{\"skill_slug\":\"vercel-web-design-guidelines\",\"total_outcomes\":11,\"successful_outcomes\":11,\"failed_outcomes\":0,\"not_relevant_outcomes\":0,\"risk_blocked_outcomes\":0,\"setup_required_outcomes\":0,\"install_attempts\":11,\"success_rate\":100,\"last_outcome_at\":\"2026-10-08T21:09:48.807419+00:00\",\"updated_at\":\"2026-10-08T21:09:48.807419+00:00\",\"install_success_rate\":100,\"avg_output_quality\":null,\"avg_time_to_useful_ms\":null,\"production_outcomes\":0,\"human_review_required_outcomes\":0,\"low_quality_outcomes\":0,\"recent_outcomes_30d\":9,\"recent_successful_outcomes_30d\":9,\"recent_failed_outcomes_30d\":0,\"recent_success_rate\":100,\"recent_failure_rate\":0,\"unique_agents\":4,\"agent_proven_score\":76.2,\"last_success_at\":\"2026-10-08T21:09:48.807419+00:00\",\"last_failure_at\":null,\"verified_installs\":11},\"data\":{\"id\":\"f7e23870-e3fa-4e2d-8000-6ca14ed7f811\",\"agent\":\"codex\",\"outcome\":\"success\",\"success\":true,\"event_id\":\"install_e1b859ec2abd483e86b71ce7acbcc1ff\",\"skill_slug\":\"vercel-web-design-guidelines\",\"install_used\":true,\"risk_blocked\":false,\"setup_required\":false},\"contract_version\":\"openagentskill-agent-outcome-v4\",\"trust_impact\":{\"trust_score_version\":\"trust-score-v5\",\"affects\":[\"Trust Score v5 outcome confidence\",\"Real agent outcomes dimension\",\"Resolve ranking adoption evidence\",\"Skill detail outcome signals\",\"Outcome leaderboard\"],\"positive\":[\"adds successful agent outcome evidence\",\"adds install-attempt evidence\"],\"negative\":[],\"note\":\"Raw notes stay private. Public pages use aggregate outcome counts, success rate, install attempts, risk blocks, and setup-required counts.\"},\"source_version\":{\"skill_version\":\"Unknown\",\"source_commit_sha\":null,\"source_content_hash\":null,\"source_ref\":null,\"source_path\":null,\"source_sync_status\":\"untracked\",\"source_version_verified\":false},\"next_agent_action\":\"Keep the skill shortlisted for similar tasks and prefer a production review before broader rollout.\"}"
+    }
+  },
+  {
+    "repo": "Leonxlnx/taste-skill",
+    "path": "skills/taste-skill",
+    "name": "design-taste-frontend",
+    "ref": "18dfc928b135629e0eddfdd445a06400d04ed439",
+    "blob": "b72132fcd466da605623ffe96e370b3991fc5285",
+    "license": "MIT",
+    "slug": "design-taste-frontend",
+    "task": "Install Taste Skill: Anti-Slop Frontend",
+    "verification": "passed: exact reviewed Git blob, pinned source byte match, valid frontmatter, minimal file inventory",
+    "sha256": "aa194351b246b8b4799099d4ed7b033d29eab6e6e3d58d8d2172978be7b3ec89",
+    "report": {
+      "payload": {
+        "event_id": "install_625fb2bd20514c17839d81b25cd57cf4",
+        "skill_slug": "design-taste-frontend",
+        "task": "Install Taste Skill: Anti-Slop Frontend",
+        "agent": "codex",
+        "outcome": "success",
+        "install_used": true
+      },
+      "http_status": 200,
+      "response": "{\"ok\":true,\"success\":true,\"message\":\"Agent outcome recorded\",\"event_id\":\"install_625fb2bd20514c17839d81b25cd57cf4\",\"skill_slug\":\"design-taste-frontend\",\"outcome\":\"success\",\"stats\":{\"skill_slug\":\"design-taste-frontend\",\"total_outcomes\":32,\"successful_outcomes\":28,\"failed_outcomes\":4,\"not_relevant_outcomes\":0,\"risk_blocked_outcomes\":0,\"setup_required_outcomes\":0,\"install_attempts\":32,\"success_rate\":87.5,\"last_outcome_at\":\"2026-10-08T21:09:49.435751+00:00\",\"updated_at\":\"2026-10-08T21:09:49.435751+00:00\",\"install_success_rate\":87.5,\"avg_output_quality\":null,\"avg_time_to_useful_ms\":null,\"production_outcomes\":0,\"human_review_required_outcomes\":0,\"low_quality_outcomes\":0,\"recent_outcomes_30d\":25,\"recent_successful_outcomes_30d\":22,\"recent_failed_outcomes_30d\":3,\"recent_success_rate\":88,\"recent_failure_rate\":12,\"unique_agents\":5,\"agent_proven_score\":66.3,\"last_success_at\":\"2026-10-08T21:09:49.435751+00:00\",\"last_failure_at\":\"2026-09-14T07:42:47.755953+00:00\",\"verified_installs\":28},\"data\":{\"id\":\"be3e57f5-0e64-434b-a94b-8666ce816470\",\"agent\":\"codex\",\"outcome\":\"success\",\"success\":true,\"event_id\":\"install_625fb2bd20514c17839d81b25cd57cf4\",\"skill_slug\":\"design-taste-frontend\",\"install_used\":true,\"risk_blocked\":false,\"setup_required\":false},\"contract_version\":\"openagentskill-agent-outcome-v4\",\"trust_impact\":{\"trust_score_version\":\"trust-score-v5\",\"affects\":[\"Trust Score v5 outcome confidence\",\"Real agent outcomes dimension\",\"Resolve ranking adoption evidence\",\"Skill detail outcome signals\",\"Outcome leaderboard\"],\"positive\":[\"adds successful agent outcome evidence\",\"adds install-attempt evidence\"],\"negative\":[],\"note\":\"Raw notes stay private. Public pages use aggregate outcome counts, success rate, install attempts, risk blocks, and setup-required counts.\"},\"source_version\":{\"skill_version\":\"Unknown\",\"source_commit_sha\":null,\"source_content_hash\":null,\"source_ref\":null,\"source_path\":null,\"source_sync_status\":\"untracked\",\"source_version_verified\":false},\"next_agent_action\":\"Keep the skill shortlisted for similar tasks and prefer a production review before broader rollout.\"}"
+    }
+  },
+  {
+    "repo": "anthropics/skills",
+    "path": "skills/frontend-design",
+    "name": "frontend-design",
+    "ref": "683bc88e56f3e09ba94f7055977f3d3aa499f202",
+    "blob": "a5333457c414d20d625f307df945842c0952ecc3",
+    "license": "Apache-2.0",
+    "slug": "anthropic-frontend-design",
+    "task": "Install Frontend Design",
+    "verification": "passed: exact reviewed Git blob, pinned source byte match, valid frontmatter, minimal file inventory",
+    "sha256": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
+    "report": {
+      "payload": {
+        "event_id": "install_f506127890e64acba15b32ea61d58ed4",
+        "skill_slug": "anthropic-frontend-design",
+        "task": "Install Frontend Design",
+        "agent": "codex",
+        "outcome": "success",
+        "install_used": true
+      },
+      "http_status": 200,
+      "response": "{\"ok\":true,\"success\":true,\"message\":\"Agent outcome recorded\",\"event_id\":\"install_f506127890e64acba15b32ea61d58ed4\",\"skill_slug\":\"anthropic-frontend-design\",\"outcome\":\"success\",\"stats\":{\"skill_slug\":\"anthropic-frontend-design\",\"total_outcomes\":55,\"successful_outcomes\":51,\"failed_outcomes\":4,\"not_relevant_outcomes\":0,\"risk_blocked_outcomes\":0,\"setup_required_outcomes\":0,\"install_attempts\":55,\"success_rate\":92.7,\"last_outcome_at\":\"2026-10-08T21:09:50.054783+00:00\",\"updated_at\":\"2026-10-08T21:09:50.054783+00:00\",\"install_success_rate\":92.7,\"avg_output_quality\":null,\"avg_time_to_useful_ms\":null,\"production_outcomes\":0,\"human_review_required_outcomes\":0,\"low_quality_outcomes\":0,\"recent_outcomes_30d\":27,\"recent_successful_outcomes_30d\":25,\"recent_failed_outcomes_30d\":2,\"recent_success_rate\":92.6,\"recent_failure_rate\":7.4,\"unique_agents\":4,\"agent_proven_score\":69.3,\"last_success_at\":\"2026-10-08T21:09:50.054783+00:00\",\"last_failure_at\":\"2026-10-04T00:11:58.489801+00:00\",\"verified_installs\":51},\"data\":{\"id\":\"9fb3b844-0f6b-4a17-8a20-5c44402188f2\",\"agent\":\"codex\",\"outcome\":\"success\",\"success\":true,\"event_id\":\"install_f506127890e64acba15b32ea61d58ed4\",\"skill_slug\":\"anthropic-frontend-design\",\"install_used\":true,\"risk_blocked\":false,\"setup_required\":false},\"contract_version\":\"openagentskill-agent-outcome-v4\",\"trust_impact\":{\"trust_score_version\":\"trust-score-v5\",\"affects\":[\"Trust Score v5 outcome confidence\",\"Real agent outcomes dimension\",\"Resolve ranking adoption evidence\",\"Skill detail outcome signals\",\"Outcome leaderboard\"],\"positive\":[\"adds successful agent outcome evidence\",\"adds install-attempt evidence\"],\"negative\":[],\"note\":\"Raw notes stay private. Public pages use aggregate outcome counts, success rate, install attempts, risk blocks, and setup-required counts.\"},\"source_version\":{\"skill_version\":\"Unknown\",\"source_commit_sha\":null,\"source_content_hash\":null,\"source_ref\":null,\"source_path\":null,\"source_sync_status\":\"untracked\",\"source_version_verified\":false},\"next_agent_action\":\"Keep the skill shortlisted for similar tasks and prefer a production review before broader rollout.\"}"
+    }
+  }
+]
