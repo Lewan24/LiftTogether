@@ -21,3 +21,5 @@ Serve HTTPS with HSTS, X-Content-Type-Options: nosniff, Referrer-Policy and Perm
 For attachments, validate size and content signatures, scan uploads, store outside executable paths and use authorized download endpoints. Keep an audited lockfile, review dependency updates in CI, run build/tests/audit, and establish backups and incident response. These server and infrastructure controls cannot be implemented by this frontend alone.
 
 References: https://top10.owasp.org/2025/ and https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html
+
+Test
