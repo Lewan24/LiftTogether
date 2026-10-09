@@ -6,7 +6,11 @@ React 19, TypeScript, Vite and Tailwind CSS 4. Run npm install, npm run dev, npm
 
 App.tsx coordinates session and page state. Screens are lazy loaded from pages/. Shared navigation, booking cards, dialogs and errors live in components/. Domain rules live in lib/. services/storage.ts is an in-memory demo repository; services/http.ts is an API transport factory with runtime response decoders, same-origin cookies, CSRF tokens, cancellation and timeouts. The transport is intentionally not wired to an invented backend. Replace synchronous demo calls with asynchronous domain repositories and loading/error states when an API contract exists.
 
-## Demo limitations
+## Demo
+
+[LiftTogether Demo](https://lifttogether.lewanmordor.workers.dev/)
+
+## Demo - limitations
 
 Demo credentials are public sample credentials. Accounts, passwords and session selection are memory-only and reset on reload. Old v4 localStorage demo data is removed on first initialization. Language is the only persisted preference. Browser role checks improve UX and are not an authorization boundary. Use only sample data. Registration requires at least eight characters. Booking rules allow one daily member session, 30?120 minutes, half-hour increments, from 06:00 to midnight, with capacity checks. API must enforce these rules transactionally.
 
