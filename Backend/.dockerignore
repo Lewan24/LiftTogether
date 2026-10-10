@@ -1,0 +1,7 @@
+bin
+obj
+.keys
+tests
+**/*.user
+**/*.log
+.env*

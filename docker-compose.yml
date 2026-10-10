@@ -1,0 +1,67 @@
+name: lift-together
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: lift
+      POSTGRES_USER: liftowner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}
+    ports: ["127.0.0.1:5433:5432"]
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./Backend/docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liftowner -d lift"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [private]
+  migrate:
+    image: lift-together-api:local
+    build: ./Backend
+    command: ["--migrate"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Database: Host=postgres;Database=lift;Username=liftowner;Password=${POSTGRES_PASSWORD};Maximum Pool Size=10
+      Bootstrap__AdminEmail: ${ADMIN_EMAIL:?Set ADMIN_EMAIL}
+      Bootstrap__AdminPassword: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [private]
+  api:
+    image: lift-together-api:local
+    build: ./Backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Database: Host=postgres;Database=lift;Username=liftapp;Password=${APP_DB_PASSWORD};Maximum Pool Size=30
+      Proxy__TrustedNetworks__0: 172.30.23.0/24
+    ports: ["127.0.0.1:${API_PORT:-8080}:8080"]
+    volumes: ["api-keys:/app/keys"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    networks: [private]
+    restart: unless-stopped
+  frontend:
+    image: lift-together-frontend:local
+    build: ./Frontend
+    ports: ["127.0.0.1:${FRONTEND_PORT:-8443}:8080"]
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [private]
+    restart: unless-stopped
+  adminer:
+    image: adminer:5
+    environment: { ADMINER_DEFAULT_SERVER: postgres }
+    ports: ["127.0.0.1:${ADMINER_PORT:-8081}:8080"]
+    profiles: [tools]
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [private]
+volumes:
+  postgres-data:
+  api-keys:
+networks:
+  private:
+    ipam:
+      config: [{ subnet: 172.30.23.0/24 }]

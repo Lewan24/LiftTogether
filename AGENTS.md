@@ -1,41 +1,26 @@
-# lift-together
+# Lift Together
 
-React + Vite + Tailwind CSS project running inside Figma Make.
+React 19 + Vite + Tailwind v4 frontend and .NET 10 minimal API with PostgreSQL.
 
-## Development Server
+## Structure
 
-A Vite development server is **already running** on `$PORT` (default 8443). You don't need to start it manually.
+- `Frontend/src/App.tsx`: application coordination and async HTTP state.
+- `Frontend/src/main.tsx` and `Frontend/src/index.css`: entrypoint, fonts, global/Tailwind styling.
+- `Frontend/src/pages/`: lazy screens.
+- `Frontend/src/services/api.ts`, `http.ts`, `forum.ts`: validated HTTP contracts, cookies, CSRF, domain requests.
+- `Frontend/src/services/storage.ts`: types and language preference only; do not reintroduce mock credentials/persistence.
+- `Frontend/package.json`, `Frontend/vite.config.ts`: frontend tooling.
+- `Backend/Program.cs`: host/security pipeline.
+- `Backend/Endpoints/`, `Backend/Security/`, `Backend/Data/`: minimal API modules, validation, EF model and migrations.
+- `Backend/tests/`: integration tests; require a disposable PostgreSQL database ending in `_tests`.
+- `docs/`: authoritative architecture, API, security and deployment context.
 
-- Preview URL: The user can access the running app through the preview panel
-- Hot reload: Changes to source files are reflected immediately
+## Development
 
-## Project Structure
+Use the existing preview/dev server when available; do not start another instance on an occupied port. Vite defaults to 8443 and proxies `/api` to localhost:8080. Commands from root: `npm run dev --prefix Frontend`, `npm run build --prefix Frontend`, `npm test --prefix Frontend`, `dotnet build LiftTogether.sln`. See `docs/development.md` for configuration.
 
-This is the canonical project structure. Start with task-relevant files below. Only follow imports or inspect other files when required, when a documented path is missing, or when the repository contradicts this guide.
+## Rules
 
-- `src/main.tsx` - React entrypoint; imports `src/index.css` and mounts `src/App.tsx` into the `#root` element
-- `src/App.tsx` - Primary application component and the usual starting point for UI work
-- `src/index.css` - Global CSS entrypoint and Tailwind CSS v4 import
-- `index.html` - Vite HTML shell containing the `#root` element and loading `src/main.tsx`
-- `package.json` - Project dependencies and the Vite build, development, preview, and formatting scripts
-- `vite.config.ts` - Vite configuration with React, Tailwind CSS v4, and Figma Make plugins plus the `@` alias for `src`
-- `.mise.toml` - Toolchain versions for Node.js and pnpm
+Keep frontend authorization as UX only; enforce role, verification and ownership at the API. Never store session tokens or credentials in browser storage. All mutations require CSRF, bounded DTOs and server validation; check optimistic versions for updates. Booking daily capacity must be checked transactionally. Keep raw uploads out of static/executable paths. No secrets in frontend bundles or tracked env files.
 
-## Dependencies
-
-- Runtime: React 19 and React DOM 19
-- Styling: Tailwind CSS v4 with the `@tailwindcss/vite` plugin
-- Build tooling: Vite 8, TypeScript 5.7, and `@vitejs/plugin-react`
-- Formatting: oxfmt
-
-## Styling
-
-This project uses **Tailwind CSS v4** through the `@tailwindcss/vite` plugin configured in `vite.config.ts`. `src/index.css` imports Tailwind with `@import 'tailwindcss';`. Use Tailwind utility classes directly in JSX and put global CSS or Tailwind v4 theme customization in `src/index.css`. This scaffold does not need a Tailwind config file or PostCSS config.
-
-`src/main.tsx` imports `src/index.css`, so global font wiring belongs in `src/index.css`. Keep CSS `@import` statements first, then add any `@font-face` rules and font-family defaults there.
-
-## Code quality
-
-- Use double quotes for strings containing apostrophes (`"We're here to help"`), or escape them in single-quoted strings. An unescaped apostrophe in a single-quoted string breaks the build.
-- Ensure JSX tags are closed and braces are balanced.
-- Export components as default exports.
+Use Tailwind v4 utilities in JSX and global theme customization in `Frontend/src/index.css`. CSS imports come first. Ensure strings, JSX tags and braces are valid. Component default exports are preferred. Do not overwrite unrelated working-tree edits.

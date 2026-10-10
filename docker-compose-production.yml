@@ -1,0 +1,84 @@
+name: lift-together-production
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: lift
+      POSTGRES_USER: liftowner
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      APP_DB_PASSWORD_FILE: /run/secrets/app_db_password
+    secrets: [postgres_password, app_db_password]
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./Backend/docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liftowner -d lift"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [private]
+    restart: unless-stopped
+  migrate:
+    image: ${API_IMAGE:-ghcr.io/your-org/lift-together-api:replace-me}
+    command: ["--migrate"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Database: Host=postgres;Database=lift;Username=liftowner;Maximum Pool Size=10
+      Database__PasswordFile: /run/secrets/postgres_password
+      Bootstrap__AdminEmail: ${ADMIN_EMAIL:?Set ADMIN_EMAIL}
+      Bootstrap__AdminPasswordFile: /run/secrets/admin_password
+    secrets: [postgres_password, admin_password]
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [private]
+  api:
+    image: ${API_IMAGE:-ghcr.io/your-org/lift-together-api:replace-me}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Database: Host=postgres;Database=lift;Username=liftapp;Maximum Pool Size=30
+      Database__PasswordFile: /run/secrets/app_db_password
+      Proxy__TrustedNetworks__0: 172.30.24.0/24
+      AllowedHosts: ${APP_HOST:?Set APP_HOST to the public hostname}
+    secrets: [app_db_password]
+    volumes: ["api-keys:/app/keys"]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 768m
+    pids_limit: 200
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    networks: [private]
+    restart: unless-stopped
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/your-org/lift-together-frontend:replace-me}
+    ports: ["127.0.0.1:${FRONTEND_PORT:-8443}:8080"]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [private]
+    restart: unless-stopped
+  adminer:
+    image: adminer:5
+    profiles: [tools]
+    environment: { ADMINER_DEFAULT_SERVER: postgres }
+    ports: ["127.0.0.1:${ADMINER_PORT:-8081}:8080"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [private]
+    restart: unless-stopped
+secrets:
+  postgres_password: { file: ./secrets/postgres_password.txt }
+  app_db_password: { file: ./secrets/app_db_password.txt }
+  admin_password: { file: ./secrets/admin_password.txt }
+volumes:
+  postgres-data:
+  api-keys:
+networks:
+  private:
+    ipam:
+      config: [{ subnet: 172.30.24.0/24 }]
