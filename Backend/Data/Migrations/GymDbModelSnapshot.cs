@@ -274,6 +274,18 @@ namespace LiftTogether.Api.Data.Migrations
                     b.Property<int>("MaxDaily")
                         .HasColumnType("integer");
 
+                    b.Property<int>("NextWeekReleaseDay")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("NextWeekReleaseTime")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasDefaultValue("18:00");
+
                     b.Property<bool>("RegistrationEnabled")
                         .HasColumnType("boolean");
 
@@ -290,6 +302,10 @@ namespace LiftTogether.Api.Data.Migrations
                             t.HasCheckConstraint("CK_Settings_Capacity", "\"MaxDaily\" BETWEEN 1 AND 100");
 
                             t.HasCheckConstraint("CK_Settings_Id", "\"Id\" = 1");
+
+                            t.HasCheckConstraint("CK_Settings_ReleaseDay", "\"NextWeekReleaseDay\" BETWEEN 0 AND 6");
+
+                            t.HasCheckConstraint("CK_Settings_ReleaseTime", "\"NextWeekReleaseTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'");
                         });
                 });
 

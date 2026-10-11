@@ -15,8 +15,8 @@ export function peakConcurrent(bookings: Booking[], date: string) {
       [minutes(b.end), -1],
     ]);
   events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  let count = 0,
-    peak = 0;
+  let count = 0;
+  let peak = 0;
   for (const [, delta] of events) {
     count += delta;
     peak = Math.max(peak, count);
@@ -37,8 +37,8 @@ export function bookingError(
     !(time.test(candidate.end) || candidate.end === "24:00")
   )
     return "Invalid date or time.";
-  const start = minutes(candidate.start),
-    end = minutes(candidate.end);
+  const start = minutes(candidate.start);
+  const end = minutes(candidate.end);
   if (start < 360 || end - start < 30 || end - start > 180)
     return "Choose 30–180 minutes between 06:00 and 24:00.";
   if (!Number.isInteger(capacity) || capacity < 1) return "Invalid capacity.";

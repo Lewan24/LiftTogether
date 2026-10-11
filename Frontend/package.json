@@ -10,7 +10,9 @@
     "format": "prettier --write src tests vite.config.ts tsconfig.json index.html",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "format:check": "prettier --check src tests vite.config.ts tsconfig.json index.html"
+    "format:check": "prettier --check src tests vite.config.ts tsconfig.json index.html",
+    "dev:demo": "vite --mode demo",
+    "build:demo": "tsc --noEmit && vite build --mode demo"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",

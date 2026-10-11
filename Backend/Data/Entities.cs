@@ -15,6 +15,7 @@ public sealed class Member
     public bool Verified { get; set; }
     public uint Version { get; set; }
 }
+
 public sealed class Session
 {
     public string Id { get; set; } = ""; // SHA-256 of a cryptographically random cookie token.
@@ -22,6 +23,7 @@ public sealed class Session
     public Member User { get; set; } = null!;
     public DateTimeOffset ExpiresAt { get; set; }
 }
+
 public sealed class GymSettings
 {
     public int Id { get; set; } = 1;
@@ -30,8 +32,11 @@ public sealed class GymSettings
     public int MaxDaily { get; set; } = 12;
     public bool RegistrationEnabled { get; set; } = true;
     public string DefaultCalendarView { get; set; } = "week";
+    public int NextWeekReleaseDay { get; set; } = 0; // Sunday, matching DayOfWeek.
+    public string NextWeekReleaseTime { get; set; } = "18:00";
     public uint Version { get; set; }
 }
+
 public sealed class Booking
 {
     public long Id { get; set; }
@@ -43,6 +48,7 @@ public sealed class Booking
     public bool Cancelled { get; set; }
     public uint Version { get; set; }
 }
+
 public sealed class Announcement
 {
     public long Id { get; set; }
@@ -57,6 +63,7 @@ public sealed class Announcement
     public string Status { get; set; } = "published";
     public uint Version { get; set; }
 }
+
 public sealed class NewsComment
 {
     public long Id { get; set; }
@@ -67,12 +74,14 @@ public sealed class NewsComment
     public string Content { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
+
 public sealed class Category
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "";
     public uint Version { get; set; }
 }
+
 public sealed class Discussion
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -86,6 +95,7 @@ public sealed class Discussion
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public uint Version { get; set; }
 }
+
 public sealed class ForumReply
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -96,6 +106,7 @@ public sealed class ForumReply
     public string Content { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
+
 public sealed class Upload
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -109,6 +120,7 @@ public sealed class Upload
     public Guid? ReplyId { get; set; }
     public ForumReply? Reply { get; set; }
 }
+
 public sealed class AuditEvent
 {
     public long Id { get; set; }

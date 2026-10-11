@@ -58,6 +58,8 @@ export type GymSettings = {
   maxDaily: number;
   registrationEnabled: boolean;
   defaultCalendarView: "week" | "month";
+  nextWeekReleaseDay: number;
+  nextWeekReleaseTime: string;
 };
 
 export type AppData = {
@@ -83,3 +85,7 @@ export function saveLanguage(language: "pl" | "en") {
     /* Optional preference. */
   }
 }
+
+export type AdminMemberInput = Omit<User, "id" | "role"> & {
+  password?: string;
+};

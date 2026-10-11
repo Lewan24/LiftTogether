@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type GymSettings } from "../services/storage";
 import {
-  APP_TODAY,
   addDays,
   dateFromIso,
   formatDate,
-  isCurrentWeekDate,
+  gymToday,
+  isBookableDate,
   startOfWeek,
   toIsoDate,
   weekNumber,
@@ -37,11 +37,19 @@ export default function SchedulePage({
   const [mode, setMode] = useState<"week" | "month">(
     settings.defaultCalendarView,
   );
-  const [anchor, setAnchor] = useState(startOfWeek(APP_TODAY));
+  const [, refreshClock] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => refreshClock((value) => value + 1),
+      30000,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+  const [anchor, setAnchor] = useState(startOfWeek(dateFromIso(gymToday())));
   const weekDays = Array.from({ length: 7 }, (_, index) =>
     addDays(anchor, index),
   );
-  const todayIso = toIsoDate(APP_TODAY);
+  const todayIso = gymToday();
   const cancel = (id: number) => {
     if (
       window.confirm(
@@ -98,8 +106,8 @@ export default function SchedulePage({
               ? "Zarządzaj wszystkimi zapisami członków siłowni DS 3."
               : "Manage all DS 3 gym member bookings."
             : language === "pl"
-              ? "Możesz przeglądać historię, ale zapisywać się tylko na bieżący tydzień."
-              : "You can browse history, but only book within the current week."
+              ? `Rezerwuj dzisiaj i kolejne dni. Kolejny tydzień otwiera się: ${["niedziela", "poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota"][settings.nextWeekReleaseDay]}, ${settings.nextWeekReleaseTime} (Europe/Warsaw).`
+              : `Book today and future days. Next week opens: ${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][settings.nextWeekReleaseDay]}, ${settings.nextWeekReleaseTime} (Europe/Warsaw).`
         }
         action={
           <Button icon="plus" onClick={() => openBooking(todayIso)}>
@@ -160,7 +168,7 @@ export default function SchedulePage({
         <Button
           variant="secondary"
           className="current-week-lock rounded-full bg-[var(--green-pale)] px-3 py-2 text-xs font-bold text-[var(--green)]"
-          onClick={() => setAnchor(startOfWeek(APP_TODAY))}
+          onClick={() => setAnchor(startOfWeek(dateFromIso(gymToday())))}
         >
           <Icon name="shield" size={16} />
           {language === "pl"
@@ -188,7 +196,7 @@ export default function SchedulePage({
         <div className="week-calendar grid min-h-[410px] grid-cols-[repeat(7,minmax(135px,1fr))] overflow-x-auto rounded-xl border border-[var(--line)] bg-white">
           {weekDays.map((day) => {
             const date = toIsoDate(day);
-            const canManageDate = isAdmin || isCurrentWeekDate(date);
+            const canManageDate = isAdmin || isBookableDate(date, settings);
             return (
               <div
                 className={`day-column min-w-[135px] border-r border-[var(--line)] last:border-r-0 [&.today]:bg-[#fbfcf8] ${date === todayIso ? "today" : ""}    ${!canManageDate ? "locked-column" : ""}  `}
@@ -235,7 +243,7 @@ export default function SchedulePage({
         <div className="month-calendar grid grid-cols-7 overflow-hidden rounded-xl border border-[var(--line)] bg-white">
           {monthDays.map((day) => {
             const date = toIsoDate(day);
-            const isActive = isAdmin || isCurrentWeekDate(date);
+            const isActive = isAdmin || isBookableDate(date, settings);
             return (
               <Button
                 variant="ghost"
@@ -299,13 +307,13 @@ export default function SchedulePage({
                   <BookingCard
                     booking={booking}
                     onEdit={
-                      isAdmin || isCurrentWeekDate(booking.date)
+                      isAdmin || isBookableDate(booking.date, settings)
                         ? () => openBooking(booking.date, booking.id)
                         : undefined
                     }
                     onCancel={
                       !isAdmin &&
-                      isCurrentWeekDate(booking.date) &&
+                      isBookableDate(booking.date, settings) &&
                       !booking.cancelled
                         ? () => cancel(booking.id)
                         : undefined

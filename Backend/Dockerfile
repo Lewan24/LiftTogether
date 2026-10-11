@@ -9,7 +9,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080 DataProtection__Path=/app/keys
 COPY --from=build /out .
-RUN mkdir -p /app/keys && chown -R $APP_UID:$APP_UID /app
+RUN mkdir -p /app/keys && chown $APP_UID:$APP_UID /app/keys
 USER $APP_UID
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s CMD dotnet LiftTogether.Api.dll --healthcheck

@@ -3,11 +3,11 @@ import { api, apiMessage, clearCsrf, noContent } from "../services/api";
 import { Button, Field } from "./ui";
 import type { Language } from "../types";
 export default function PasswordChange({ language }: { language: Language }) {
-  const [currentPassword, setCurrent] = useState(""),
-    [newPassword, setNew] = useState(""),
-    [busy, setBusy] = useState(false),
-    [message, setMessage] = useState(""),
-    [error, setError] = useState("");
+  const [currentPassword, setCurrent] = useState("");
+  const [newPassword, setNew] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const pl = language === "pl";
   async function submit(e: FormEvent) {
     e.preventDefault();

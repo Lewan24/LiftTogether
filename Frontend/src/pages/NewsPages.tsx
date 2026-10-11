@@ -108,8 +108,8 @@ export function PostDetailPage({
   deleteComment: (id: number) => Promise<void>;
 }) {
   const [content, setContent] = useState("");
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const value = content.trim();

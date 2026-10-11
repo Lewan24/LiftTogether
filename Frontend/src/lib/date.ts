@@ -60,8 +60,54 @@ export function weekNumber(date: Date) {
   );
 }
 
-export function isCurrentWeekDate(date: string) {
-  const weekStart = toIsoDate(startOfWeek(new Date()));
-  const weekEnd = toIsoDate(addDays(startOfWeek(new Date()), 6));
-  return date >= weekStart && date <= weekEnd;
+// Booking release uses the gym's time zone, regardless of the browser's location.
+export function isBookableDate(
+  date: string,
+  settings: { nextWeekReleaseDay: number; nextWeekReleaseTime: string },
+  now = new Date(),
+) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Warsaw",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const value = (type: string) =>
+    parts.find((part) => part.type === type)!.value;
+  const today = new Date(
+    Date.UTC(
+      Number(value("year")),
+      Number(value("month")) - 1,
+      Number(value("day")),
+    ),
+  );
+  const offset = (today.getUTCDay() + 6) % 7;
+  const monday = new Date(today);
+  monday.setUTCDate(today.getUTCDate() - offset);
+  const releaseDay = (settings.nextWeekReleaseDay + 6) % 7;
+  const released =
+    offset > releaseDay ||
+    (offset === releaseDay &&
+      `${value("hour")}:${value("minute")}` >= settings.nextWeekReleaseTime);
+  const end = new Date(monday);
+  end.setUTCDate(monday.getUTCDate() + (released ? 13 : 6));
+  return (
+    date >= today.toISOString().slice(0, 10) &&
+    date <= end.toISOString().slice(0, 10)
+  );
+}
+
+export function gymToday(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Warsaw",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const value = (type: string) =>
+    parts.find((part) => part.type === type)!.value;
+  return `${value("year")}-${value("month")}-${value("day")}`;
 }

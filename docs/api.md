@@ -13,12 +13,14 @@ All browser requests use same-origin `/api`. Authenticated sessions are carried 
 | PATCH /auth/profile                         | Authenticated                       | Edit own profile with version; never role/verification          |
 | POST /auth/password                         | Authenticated, rate limited         | Current/new password; revoke all sessions and issue a fresh one |
 | GET /users?page=0                           | Admin                               | Member profiles, 50 per page                                    |
+| POST /users                              | Admin                               | Create member with profile, password and verification status    |
+| PATCH /users/{id}                          | Admin                               | Edit profile/verification; optional password reset; version      |
 | PATCH /users/{id}/verification              | Admin                               | `{verified, version}`; revoke access immediately when false     |
 | PATCH /settings                             | Admin                               | Gym settings with version                                       |
 | GET /bookings?from=...&to=...               | Verified member/admin               | Booking range, up to 92 days                                    |
 | POST /bookings                              | Verified member/admin               | `{date,start,end,version?}` for current user                    |
 | PATCH /bookings/{id}                        | Owner/admin                         | Edit times with version and unchanged date                      |
-| POST /bookings/{id}/cancel                  | Owner/admin                         | Cancel; members only within current week                        |
+| POST /bookings/{id}/cancel                  | Owner/admin                         | Cancel; members only within the open booking window                        |
 | DELETE /bookings/{id}                       | Admin                               | Remove booking                                                  |
 | GET /posts?page=0                           | Verified member/admin               | Announcements; admins also see drafts                           |
 | GET /posts/{id}?page=0                      | Verified member/admin               | Post and one page of comments                                   |
@@ -41,6 +43,8 @@ All browser requests use same-origin `/api`. Authenticated sessions are carried 
 | POST /images                                | Verified member/admin, rate limited | Multipart field `file`; one PNG/JPEG/WebP up to 2 MiB           |
 | GET /images/{id}                            | Verified member/admin               | Attached image or own unattached image, JPEG                    |
 | DELETE /images/{id}                         | Owner                               | Remove an unattached image                                      |
+| GET /dashboard                           | Verified member/admin              | Current-week forum/news counts and latest published content      |
+| GET /admin/statistics?period=week&date=2026-10-11 | Admin                         | Complete week/month bookings, users, forum and weekday averages  |
 | GET /audit?page=0                           | Admin                               | Paginated security/management audit events                      |
 
 `GET /health/live` checks process liveness; `GET /health/ready` checks database connectivity without revealing configuration.
@@ -49,7 +53,7 @@ All browser requests use same-origin `/api`. Authenticated sessions are carried 
 
 Profile: `firstName`, `lastName`, `email`, `dormitory`, `room`, `facebookUrl`, `phone`, `version`. Password registration length is 12-128; other profile text is bounded to 100 and email/Facebook URLs to 254 characters. Roles, owner IDs, hashes and verification are never writable through profile/registration DTOs. Unknown JSON properties do not grant permissions.
 
-Settings: `gymName`, `dormitoryName`, `maxDaily` (1-100), `registrationEnabled`, `defaultCalendarView` (`week` or `month`), `version`.
+Settings: `gymName`, `dormitoryName`, `maxDaily` (1-100), `registrationEnabled`, `defaultCalendarView` (`week` or `month`), `nextWeekReleaseDay` (0=Sunday through 6=Saturday), `nextWeekReleaseTime` (`HH:mm`), `version`. Next week opens at this configured Europe/Warsaw time; defaults to Sunday 18:00. Only today and future dates within the released weeks are bookable by members; past bookings are read-only. Create/edit/cancel use the same booking window; administrators can manage any week.
 
 Announcements: `titlePl`, `titleEn` (200 each), `contentPl`, `contentEn` (10,000 each), `status` (`draft` or `published`), `important`, `version` on update. Announcement content is plain text; forum content is sanitized rich text.
 
@@ -57,8 +61,14 @@ Discussion title is 200 characters; rich HTML is bounded to 50,000 before saniti
 
 Upload returns `{id,name,src}`. Send returned image metadata in `images`, at most four distinct image IDs per post/reply. The server ignores client name/src values and resolves IDs to owned, unattached uploads or images already attached to the edited discussion. Cross-owner reassignment is rejected. Allowed encoded formats are decoded, dimension-checked (6,000 per axis, 16 million pixels total), resized to at most 1,600 pixels and re-encoded as JPEG with metadata removed. Original files are not served.
 
-Page wrappers include `page` and `hasMore`. Forum list has `categories` and `discussions`; user list has `users`; announcement list has `posts`. Detail wrappers have `discussion` or `post`. Counts use `commentCount`, because detail comments are paginated.
+Page wrappers include `page` and `hasMore`. Forum list has `categories` and `discussions`; user list has `users`; audit list has `entries` (actor ID/name, action, target and actual timestamp); announcement list has `posts`. Detail wrappers have `discussion` or `post`. Counts use `commentCount`, because detail comments are paginated.
 
 ## Errors
 
 JSON failures include `{code,traceId}` with no stack trace or database error details. Typical statuses: 400 invalid input/CSRF, 401 unauthenticated, 403 forbidden/pending verification, 404 hidden or missing record, 409 capacity/duplicate/stale version, 429 rate limit, 500 unexpected server failure. `Retry-After: 60` accompanies throttling. The React app keeps editors open on failure and shows a message; stale edits require reload before retry. Request bodies are capped at 3 MiB at the proxy and API.
+
+Booking cancellation requires a JSON body `{ "version": <current booking version> }`; stale versions return HTTP 409 (`CONFLICT_REFRESH`).
+
+Admin member create/edit accepts the profile fields plus `verified`, `password` and `version` (updates). Creation requires a 12–128 character password; omit it or send an empty string on updates to preserve the existing password. Password changes invalidate all of the target member’s sessions. Roles cannot be changed through these endpoints; new members always have role `user`. Administrator accounts cannot be unverified.
+
+Dashboard statistics accept `period=week` (default) or `month`, with an optional ISO calendar `date` (2000–2100). Counts cover all database records, independent of list pagination. Reservations exclude cancellations; weekday averages include every matching calendar day in the selected period, including future and empty days. Total app accounts include administrators; verified/pending counts describe ordinary members. Forum totals count topics, not replies. `/dashboard` is limited to the current Warsaw week and published news, and includes forum reply counts. These statistics describe reservations, not measured attendance.

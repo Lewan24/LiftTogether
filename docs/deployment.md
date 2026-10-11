@@ -4,7 +4,7 @@
 
 Copy `.env.example` to `.env`, replace passwords, and run `docker compose up --build -d`. Source builds produce `lift-together-api:local` and `lift-together-frontend:local`. Services: PostgreSQL, one-shot migrator, API, frontend/Nginx, and optional Adminer. `docker compose --profile tools up -d adminer` exposes Adminer only at 127.0.0.1:8081.
 
-The first database initialization creates `liftowner` and `liftapp`. `liftowner` owns schema migrations; `liftapp` receives DML and sequence permissions but cannot own schema or change/delete audit history. Init scripts run only when the PostgreSQL volume is empty. Changing environment passwords later is not a rotation mechanism.
+The development database initialization creates `lifttogether_app` and `liftapp`. The owner role owns schema migrations; production uses `liftowner` instead. `liftapp` receives DML and sequence permissions but cannot own schema or change/delete audit history. Init scripts run only when the PostgreSQL volume is empty. Changing environment passwords later is not a rotation mechanism.
 
 ## Production images and secrets
 
@@ -79,4 +79,4 @@ This requires privileged operator access, does not expose a reset endpoint to us
 
 ## Monitoring
 
-`/health/live` checks the running process; `/health/ready` checks database connectivity. API Docker healthcheck uses readiness. Frontend `/health` checks Nginx. Logs and error trace IDs support diagnosis without exposing request bodies. Observe CPU during authentication, upload decode memory, HTTP 429/5xx rates, connection pool pressure, PostgreSQL storage and audit growth. Authentication limits: 10 attempts per minute per IP; general API: 180 requests per minute per member/IP; upload: 12 per minute and 48 per day per member. Limits are per API instance except the database-backed daily quota.
+`/health/live` checks the running process; `/health/ready` checks that the database responds and seeded settings are available. API Docker healthcheck uses readiness. Frontend `/health` checks Nginx. Logs and error trace IDs support diagnosis without exposing request bodies. Observe CPU during authentication, upload decode memory, HTTP 429/5xx rates, connection pool pressure, PostgreSQL storage and audit growth. Authentication limits: 10 attempts per minute per IP; general API: 180 requests per minute per member/IP; upload: 12 per minute and 48 per day per member. Limits are per API instance except the database-backed daily quota.

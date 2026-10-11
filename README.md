@@ -25,6 +25,10 @@ docker-compose-production.yml  Deployment stack using replaceable image referenc
 LiftTogether.sln          API and test solution
 ```
 
+## Static demo on Cloudflare Pages
+
+Set `VITE_API_MODE=mock`, use `Frontend` as the Pages root, build with `npm run build`, and publish `dist`. On Cloudflare Pages, unset mode defaults to the demo automatically. It needs no API or database and persists sample data only in the visitor’s browser. Use `npm run dev:demo --prefix Frontend` locally. See [demo setup](docs/demo.md) for accounts, reset and deployment details.
+
 ## Start the local Docker stack
 
 Requires Docker with Linux containers. Copy `.env.example` to `.env` and replace the database and initial administrator passwords. Administrator passwords require 12–128 characters. The bootstrap administrator is created only when no administrator exists; changing the environment variable does not reset an existing account.
@@ -34,15 +38,15 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Open **http://localhost:8443** and sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Register member accounts through the application, then verify them in the admin panel. There are no public demo credentials or seeded member profiles. If port 8443 is already in use, set `FRONTEND_PORT=8444` in `.env`.
+Open **http://localhost:8443** and sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Register member accounts through the application, then verify them in the admin panel. The HTTP stack has no public demo credentials or seeded member profiles. If port 8443 is already in use, set `FRONTEND_PORT=8444` in `.env`.
 
-The database binds to `127.0.0.1:5433`; the API binds to `127.0.0.1:8080` (change `API_PORT` if occupied). Adminer is optional and bound to localhost:
+The database binds to `127.0.0.1:5432`; the API binds to `127.0.0.1:8080` (change `API_PORT` if occupied). Adminer is optional and bound to localhost:
 
 ```sh
 docker compose --profile tools up -d adminer
 ```
 
-Open http://localhost:8081, choose PostgreSQL, server `postgres`, database `lift`, and use the configured database credentials. The `migrate` service applies versioned migrations and initializes settings, categories, and the first administrator before the API starts. PostgreSQL and Data Protection keys use named volumes. `docker compose down` preserves them; adding `-v` deletes stored data.
+Open http://localhost:8081, choose PostgreSQL, server `postgres`, database `lifttogether`, and use the configured database credentials. The `migrate` service applies versioned migrations and initializes settings, categories, and the first administrator before the API starts. PostgreSQL and Data Protection keys use named volumes. `docker compose down` preserves them; adding `-v` deletes stored data.
 
 ## Run from source
 
@@ -60,7 +64,7 @@ dotnet run --project Backend -- --migrate
 dotnet run --project Backend
 ```
 
-Set `ConnectionStrings__Database`, `Bootstrap__AdminEmail`, and `Bootstrap__AdminPassword` before initialization. Use `ASPNETCORE_ENVIRONMENT=Development` for local HTTP; deployed sessions require HTTPS.
+The local database defaults come from `docker-compose-dbs.yml` and are configured in Development settings. Development startup automatically applies migrations and seeds settings/categories using the local owner connection. Set `Bootstrap__AdminEmail` and `Bootstrap__AdminPassword` to create the administrator; `ConnectionStrings__Database` overrides the database defaults. Stop the database-only stack before starting full Compose, since both publish port 5432; their named volumes are separate. Use `ASPNETCORE_ENVIRONMENT=Development` for local HTTP; deployed sessions require HTTPS.
 
 ## Validation
 

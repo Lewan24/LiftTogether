@@ -36,8 +36,8 @@ export default function ForumPage({
   data: ForumData;
   onChange: (data: ForumData) => void;
 }) {
-  const pl = language === "pl",
-    admin = user.role === "admin";
+  const pl = language === "pl";
+  const admin = user.role === "admin";
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -47,9 +47,9 @@ export default function ForumPage({
   const [error, setError] = useState("");
   const [replyKey, setReplyKey] = useState(0);
   const [selected, setSelected] = useState<Discussion | null>(null);
-  const [replyPage, setReplyPage] = useState(0),
-    [replyMore, setReplyMore] = useState(false),
-    [pending, setPending] = useState(false);
+  const [replyPage, setReplyPage] = useState(0);
+  const [replyMore, setReplyMore] = useState(false);
+  const [pending, setPending] = useState(false);
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
   useEffect(() => {
@@ -395,12 +395,12 @@ function DiscussionEditor({
   ) => Promise<boolean>;
 }) {
   const pl = language === "pl";
-  const [title, setTitle] = useState(discussion?.title ?? ""),
-    [content, setContent] = useState(discussion?.content ?? ""),
-    [categoryId, setCategoryId] = useState(
-      discussion?.categoryId ?? data.categories[0]?.id ?? "",
-    ),
-    [images, setImages] = useState<ForumImage[]>(discussion?.images ?? []);
+  const [title, setTitle] = useState(discussion?.title ?? "");
+  const [content, setContent] = useState(discussion?.content ?? "");
+  const [categoryId, setCategoryId] = useState(
+    discussion?.categoryId ?? data.categories[0]?.id ?? "",
+  );
+  const [images, setImages] = useState<ForumImage[]>(discussion?.images ?? []);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   return (
@@ -509,9 +509,9 @@ function ReplyComposer({
   language: Language;
   onSubmit: (content: string, images: ForumImage[]) => Promise<void>;
 }) {
-  const [content, setContent] = useState(""),
-    [images, setImages] = useState<ForumImage[]>([]),
-    [error, setError] = useState("");
+  const [content, setContent] = useState("");
+  const [images, setImages] = useState<ForumImage[]>([]);
+  const [error, setError] = useState("");
   const pl = language === "pl";
   const [busy, setBusy] = useState(false);
   return (

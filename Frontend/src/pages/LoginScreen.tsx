@@ -1,4 +1,5 @@
 import { FormEvent, useState, useEffect, useRef } from "react";
+import { isDemoMode } from "../services/mode";
 import type { User } from "../services/storage";
 import { api, apiMessage, clearCsrf, userSchema } from "../services/api";
 import type { Language } from "../types";
@@ -120,6 +121,42 @@ export default function LoginScreen({
                 : "Join your campus gym community."
               : t.loginText}
           </p>
+
+          {isDemoMode && !register && (
+            <div className="my-5 rounded-lg border border-[var(--line)] bg-[var(--bg)] p-4 text-sm">
+              <p className="mb-2">
+                {language === "pl"
+                  ? "Wybierz konto demonstracyjne:"
+                  : "Choose a demo account:"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ["admin@demo.example", "Admin"],
+                  [
+                    "member@demo.example",
+                    language === "pl" ? "Użytkownik" : "Member",
+                  ],
+                ].map(([email, label]) => (
+                  <Button
+                    key={email}
+                    type="button"
+                    onClick={() =>
+                      setForm((current) => ({
+                        ...current,
+                        email,
+                        password: "Demo-password-2026!",
+                      }))
+                    }
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              <p className="mt-2 text-[var(--ink-soft)]">
+                {language === "pl" ? "Hasło:" : "Password:"} Demo-password-2026!
+              </p>
+            </div>
+          )}
 
           {register && (
             <div className="form-row grid grid-cols-2 gap-3 max-[600px]:grid-cols-1 max-[600px]:gap-0">

@@ -52,6 +52,33 @@ export default function ProfilePage({
             : "Keep the details used to verify your account up to date."
         }
       />
+      {!user.verified && user.role !== "admin" && (
+        <section
+          role="status"
+          aria-labelledby="verification-notice-title"
+          className="mb-6 rounded-xl border border-[var(--green)]/25 bg-[var(--lime)]/15 p-6 text-[var(--green-dark)]"
+        >
+          <h2
+            id="verification-notice-title"
+            className="mb-3 flex items-center gap-2 font-display text-xl font-bold"
+          >
+            <Icon name="clock" size={22} />
+            {language === "pl"
+              ? "Konto utworzone — oczekuje na weryfikację"
+              : "Account created — awaiting verification"}
+          </h2>
+          <p className="mb-2">
+            {language === "pl"
+              ? "Administrator musi zatwierdzić Twoje konto przed uzyskaniem dostępu do rezerwacji, aktualności i forum. Sprawdzi dane profilu oraz członkostwo w grupie siłowni."
+              : "An administrator must approve your account before you can access bookings, news and the forum. They will review your profile details and gym group membership."}
+          </p>
+          <p>
+            {language === "pl"
+              ? "Sprawdź poniżej imię, nazwisko, akademik, numer pokoju i adres profilu Facebook. Jeśli potrzebujesz pomocy z weryfikacją, skontaktuj się z administracją siłowni. Po zatwierdzeniu wróć do aplikacji lub odśwież stronę."
+              : "Check your name, dormitory, room number and Facebook profile below. Contact the gym administration if you need help with verification. Once approved, return to the app or refresh the page."}
+          </p>
+        </section>
+      )}
       <div className="profile-layout grid grid-cols-[280px_minmax(0,680px)] items-start gap-5 max-[820px]:grid-cols-1">
         <aside className="profile-summary flex flex-col items-center rounded-xl bg-[var(--green-dark)] px-6 py-[30px] text-center text-white [&_>_span]:mt-1 [&_>_span]:text-sm [&_>_span]:text-white/70 max-[820px]:items-start max-[820px]:text-left">
           <div className="profile-avatar grid size-[86px] place-items-center rounded-full bg-[var(--lime)] font-display text-[26px] font-extrabold text-[var(--green-dark)]">

@@ -26,9 +26,9 @@ export function Sidebar({
   open: boolean;
   setOpen: (v: boolean) => void;
 }) {
-  const t = copy[language],
-    mobile = useMediaQuery("(max-width: 820px)"),
-    ref = useRef<HTMLElement>(null);
+  const t = copy[language];
+  const mobile = useMediaQuery("(max-width: 820px)");
+  const ref = useRef<HTMLElement>(null);
   const closeRef = useRef(setOpen);
   closeRef.current = setOpen;
   useEffect(() => {
@@ -49,9 +49,9 @@ export function Sidebar({
         closeRef.current(false);
       }
       if (event.key === "Tab") {
-        const nodes = focusable(),
-          first = nodes[0],
-          last = nodes[nodes.length - 1];
+        const nodes = focusable();
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
         if (event.shiftKey && document.activeElement === first) {
           event.preventDefault();
           last?.focus();

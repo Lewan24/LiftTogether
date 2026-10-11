@@ -17,11 +17,11 @@ export default function ForumCategories({
   language: Language;
 }) {
   const pl = language === "pl";
-  const [name, setName] = useState(""),
-    [id, setId] = useState<string | undefined>(),
-    [error, setError] = useState("");
-  const [deleting, setDeleting] = useState<string | null>(null),
-    [replacement, setReplacement] = useState("");
+  const [name, setName] = useState("");
+  const [id, setId] = useState<string | undefined>();
+  const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [replacement, setReplacement] = useState("");
   const [busy, setBusy] = useState(false);
   async function run(action: () => Promise<ForumData>) {
     if (busy) return false;

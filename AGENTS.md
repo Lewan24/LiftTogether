@@ -21,6 +21,6 @@ Use the existing preview/dev server when available; do not start another instanc
 
 ## Rules
 
-Keep frontend authorization as UX only; enforce role, verification and ownership at the API. Never store session tokens or credentials in browser storage. All mutations require CSRF, bounded DTOs and server validation; check optimistic versions for updates. Booking daily capacity must be checked transactionally. Keep raw uploads out of static/executable paths. No secrets in frontend bundles or tracked env files.
+Keep frontend authorization as UX only; enforce role, verification and ownership at the API. In HTTP mode, never store session tokens or credentials in browser storage. Explicit `VITE_API_MODE=mock` demo builds use isolated browser storage for fictional data and simulated sessions; keep this adapter separate from HTTP authentication. All mutations require CSRF, bounded DTOs and server validation; check optimistic versions for updates. Booking daily capacity must be checked transactionally. Keep raw uploads out of static/executable paths. No secrets in frontend bundles or tracked env files.
 
 Use Tailwind v4 utilities in JSX and global theme customization in `Frontend/src/index.css`. CSS imports come first. Ensure strings, JSX tags and braces are valid. Component default exports are preferred. Do not overwrite unrelated working-tree edits.

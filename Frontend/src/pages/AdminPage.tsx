@@ -1,7 +1,15 @@
+import AdminStatistics from "../components/AdminStatistics";
+import AdminActivity from "../components/AdminActivity";
+import AdminUserEditor from "../components/AdminUserEditor";
 import { useEffect, useState, type ReactNode } from "react";
-import { type GymSettings, type Post, type User } from "../services/storage";
+import {
+  type GymSettings,
+  type Post,
+  type User,
+  type AdminMemberInput,
+} from "../services/storage";
 import { dateFromIso, formatDate } from "../lib/date";
-import type { Booking, Language } from "../types";
+import type { Language } from "../types";
 import {
   Button,
   Field,
@@ -20,7 +28,7 @@ export default function AdminPage({
   language,
   users,
   onVerify,
-  bookings,
+  onSaveUser,
   posts,
   onSavePost,
   onDeletePost,
@@ -35,7 +43,7 @@ export default function AdminPage({
   language: Language;
   users: User[];
   onVerify: (user: User) => Promise<void>;
-  bookings: Booking[];
+  onSaveUser: (input: AdminMemberInput, id?: string) => Promise<void>;
   posts: Post[];
   onSavePost: (
     post: Pick<
@@ -59,6 +67,7 @@ export default function AdminPage({
   forum: ForumData;
   setForum: (data: ForumData) => void;
 }) {
+  const [userEditor, setUserEditor] = useState<User | "new" | null>(null);
   const [tab, setTab] = useState<AdminView>("overview");
   const [postModal, setPostModal] = useState(false);
   const [editingPostId, setEditingPostId] = useState<number | null>(null);
@@ -81,29 +90,12 @@ export default function AdminPage({
       ? pendingUsers
       : userFilter === "active"
         ? members.filter((user) => user.verified)
-        : members;
+        : users;
   const displayedUsers = filteredUsers.filter((user) =>
     `${user.firstName} ${user.lastName} ${user.email} ${user.dormitory} ${user.room}`
       .toLocaleLowerCase()
       .includes(search.trim().toLocaleLowerCase()),
   );
-  const dataActivities = [...bookings]
-    .sort((a, b) => `${b.date}${b.start}`.localeCompare(`${a.date}${a.start}`))
-    .slice(0, 10)
-    .map((booking) => ({
-      id: booking.id,
-      initials: booking.initials,
-      color: booking.color,
-      name: booking.name,
-      text: booking.cancelled
-        ? "zrezygnował z treningu"
-        : "ma zapis na trening",
-      detail: `${formatDate(dateFromIso(booking.date), language, {
-        day: "2-digit",
-        month: "2-digit",
-      })} · ${booking.start}–${booking.end}`,
-      time: booking.cancelled ? "Zrezygnowano" : "Aktywny",
-    }));
   const openPostEditor = (post?: Post) => {
     setEditingPostId(post?.id ?? null);
     setPostTitle(post?.titlePl ?? "");
@@ -112,8 +104,8 @@ export default function AdminPage({
   };
   const [settings, setSettings] = useState(savedSettings);
   useEffect(() => setSettings(savedSettings), [savedSettings]);
-  const [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   async function run(action: () => Promise<void>) {
     if (busy) return false;
     setBusy(true);
@@ -226,50 +218,7 @@ export default function AdminPage({
       )}
       {tab === "overview" && (
         <>
-          <div className="stats-grid mb-[18px] grid grid-cols-4 gap-4 max-[1150px]:grid-cols-2 max-[600px]:grid-cols-1">
-            <div className="stat-card flex gap-3 rounded-xl border border-[var(--line)] bg-white p-5 [&_>_div:last-child]:flex [&_>_div:last-child]:flex-col [&_span]:text-xs [&_span]:text-[var(--ink-soft)] [&_strong]:my-1 [&_strong]:font-display [&_strong]:text-[25px] [&_strong]:tabular-nums [&_small]:text-xs [&_small]:text-[var(--green)]">
-              <div className="stat-icon green grid size-11 place-items-center rounded-lg text-[var(--green-dark)] [&.blue]:bg-[var(--blue)] [&.yellow]:bg-[var(--yellow)] [&.green]:bg-[var(--green-pale)] [&.peach]:bg-[var(--peach)]">
-                <Icon name="users" />
-              </div>
-              <div>
-                <span>Aktywni użytkownicy</span>
-                <strong>{members.length}</strong>
-                <small>Dane z API</small>
-              </div>
-            </div>
-            <div className="stat-card flex gap-3 rounded-xl border border-[var(--line)] bg-white p-5 [&_>_div:last-child]:flex [&_>_div:last-child]:flex-col [&_span]:text-xs [&_span]:text-[var(--ink-soft)] [&_strong]:my-1 [&_strong]:font-display [&_strong]:text-[25px] [&_strong]:tabular-nums [&_small]:text-xs [&_small]:text-[var(--green)]">
-              <div className="stat-icon blue grid size-11 place-items-center rounded-lg text-[var(--green-dark)] [&.blue]:bg-[var(--blue)] [&.yellow]:bg-[var(--yellow)] [&.green]:bg-[var(--green-pale)] [&.peach]:bg-[var(--peach)]">
-                <Icon name="calendar" />
-              </div>
-              <div>
-                <span>Zapisy w tym tygodniu</span>
-                <strong>
-                  {bookings.filter((booking) => !booking.cancelled).length}
-                </strong>
-                <small>Dane z terminarza</small>
-              </div>
-            </div>
-            <div className="stat-card flex gap-3 rounded-xl border border-[var(--line)] bg-white p-5 [&_>_div:last-child]:flex [&_>_div:last-child]:flex-col [&_span]:text-xs [&_span]:text-[var(--ink-soft)] [&_strong]:my-1 [&_strong]:font-display [&_strong]:text-[25px] [&_strong]:tabular-nums [&_small]:text-xs [&_small]:text-[var(--green)]">
-              <div className="stat-icon yellow grid size-11 place-items-center rounded-lg text-[var(--green-dark)] [&.blue]:bg-[var(--blue)] [&.yellow]:bg-[var(--yellow)] [&.green]:bg-[var(--green-pale)] [&.peach]:bg-[var(--peach)]">
-                <Icon name="user-check" />
-              </div>
-              <div>
-                <span>Do weryfikacji</span>
-                <strong>{pendingUsers.length}</strong>
-                <small>Wymaga uwagi</small>
-              </div>
-            </div>
-            <div className="stat-card flex gap-3 rounded-xl border border-[var(--line)] bg-white p-5 [&_>_div:last-child]:flex [&_>_div:last-child]:flex-col [&_span]:text-xs [&_span]:text-[var(--ink-soft)] [&_strong]:my-1 [&_strong]:font-display [&_strong]:text-[25px] [&_strong]:tabular-nums [&_small]:text-xs [&_small]:text-[var(--green)]">
-              <div className="stat-icon peach grid size-11 place-items-center rounded-lg text-[var(--green-dark)] [&.blue]:bg-[var(--blue)] [&.yellow]:bg-[var(--yellow)] [&.green]:bg-[var(--green-pale)] [&.peach]:bg-[var(--peach)]">
-                <Icon name="activity" />
-              </div>
-              <div>
-                <span>Rezygnacje</span>
-                <strong>{bookings.filter((b) => b.cancelled).length}</strong>
-                <small>Ostatnie 7 dni</small>
-              </div>
-            </div>
-          </div>
+          <AdminStatistics language={language} />
           <div className="admin-grid grid grid-cols-[1.35fr_.8fr] gap-[18px] max-[1150px]:grid-cols-1">
             <section className="admin-card rounded-xl border border-[var(--line)] bg-white p-6">
               <div className="section-heading mb-[18px] flex items-end justify-between gap-5 [&_.eyebrow]:mb-1">
@@ -290,27 +239,7 @@ export default function AdminPage({
                   <Icon name="arrow" size={15} />
                 </Button>
               </div>
-              <div className="activity-list">
-                {dataActivities.slice(0, 4).map((a) => (
-                  <div
-                    className="activity-row flex items-center gap-3 border-b border-[var(--line)] py-3 last:border-b-0 [&_>_div:nth-child(2)]:min-w-0 [&_>_div:nth-child(2)]:flex-1 [&_p]:text-sm [&_span]:text-xs [&_span]:text-[var(--ink-soft)] [&_time]:text-xs [&_time]:text-[var(--ink-soft)]"
-                    key={a.id}
-                  >
-                    <div
-                      className={`mini-avatar grid size-[31px] shrink-0 place-items-center rounded-full text-xs font-bold text-[var(--green-dark)] [&.blue]:bg-[var(--blue)] [&.yellow]:bg-[var(--yellow)] [&.green]:bg-[var(--green-pale)] [&.peach]:bg-[var(--peach)] ${a.color}  `}
-                    >
-                      {a.initials}
-                    </div>
-                    <div>
-                      <p>
-                        <strong>{a.name}</strong> {a.text}
-                      </p>
-                      <span>{a.detail}</span>
-                    </div>
-                    <time>{a.time}</time>
-                  </div>
-                ))}
-              </div>
+              <AdminActivity language={language} compact />
             </section>
             <section className="admin-card rounded-xl border border-[var(--line)] bg-white p-6">
               <div className="section-heading mb-[18px] flex items-end justify-between gap-5 [&_.eyebrow]:mb-1">
@@ -471,9 +400,9 @@ export default function AdminPage({
                 placeholder="Search by name, dormitory or room"
               />
             </div>
-            <span className="muted text-[var(--ink-soft)] leading-relaxed">
-              New accounts use the registration form.
-            </span>
+            <Button onClick={() => setUserEditor("new")}>
+              {language === "pl" ? "Utwórz użytkownika" : "Create member"}
+            </Button>
           </div>
           <div className="filter-pills mb-5 flex flex-wrap gap-2 [&_.active]:bg-[var(--green-pale)] [&_.active]:text-[var(--green)]">
             <Button
@@ -504,7 +433,7 @@ export default function AdminPage({
                 `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
               return (
                 <div
-                  className="user-row grid grid-cols-[34px_minmax(0,1fr)_minmax(100px,180px)_80px_110px_40px] items-center gap-3 border-b border-[var(--line)] py-4 [&_a]:truncate [&_a]:text-xs [&_a]:text-[var(--green)] max-[1150px]:grid-cols-[34px_minmax(0,1fr)_110px] max-[1150px]:[&_a]:col-start-2 max-[1150px]:[&_.status]:col-start-2 max-[1150px]:[&_.button-secondary]:col-start-3 max-[1150px]:[&_.button-secondary]:row-span-2"
+                  className="user-row grid grid-cols-[34px_minmax(0,1fr)_minmax(100px,180px)_80px_110px_80px] items-center gap-3 border-b border-[var(--line)] py-4 [&_a]:truncate [&_a]:text-xs [&_a]:text-[var(--green)] max-[1150px]:grid-cols-[34px_minmax(0,1fr)_110px] max-[1150px]:[&_a]:col-start-2 max-[1150px]:[&_.status]:col-start-2 max-[1150px]:[&_.button-secondary]:col-start-3 max-[1150px]:[&_.button-secondary]:row-span-2"
                   key={user.id}
                 >
                   <div className="mini-avatar blue grid size-[31px] shrink-0 place-items-center rounded-full text-xs font-bold text-[var(--green-dark)] [&.blue]:bg-[var(--blue)] [&.yellow]:bg-[var(--yellow)] [&.green]:bg-[var(--green-pale)] [&.peach]:bg-[var(--peach)]">
@@ -532,7 +461,9 @@ export default function AdminPage({
                   >
                     {user.verified ? "Aktywny" : "Oczekuje"}
                   </span>
-                  {!user.verified ? (
+                  {user.role === "admin" ? (
+                    <span>Administrator</span>
+                  ) : !user.verified ? (
                     <Button
                       variant="secondary"
                       icon="check"
@@ -562,7 +493,9 @@ export default function AdminPage({
                       {language === "pl" ? "Zawieś" : "Suspend"}
                     </Button>
                   )}
-                  <span />
+                  <Button variant="ghost" onClick={() => setUserEditor(user)}>
+                    {language === "pl" ? "Edytuj" : "Edit"}
+                  </Button>
                 </div>
               );
             })}
@@ -586,31 +519,8 @@ export default function AdminPage({
                 Dziennik aktywności
               </div>
             </div>
-            <Button variant="secondary" icon="calendar">
-              Ostatnie 30 dni
-            </Button>
           </div>
-          <div className="activity-list detailed p-[17px_0]">
-            {dataActivities.map((a, i) => (
-              <div
-                className="activity-row flex items-center gap-3 border-b border-[var(--line)] py-3 last:border-b-0 [&_>_div:nth-child(2)]:min-w-0 [&_>_div:nth-child(2)]:flex-1 [&_p]:text-sm [&_span]:text-xs [&_span]:text-[var(--ink-soft)] [&_time]:text-xs [&_time]:text-[var(--ink-soft)]"
-                key={i}
-              >
-                <div
-                  className={`mini-avatar grid size-[31px] shrink-0 place-items-center rounded-full text-xs font-bold text-[var(--green-dark)] [&.blue]:bg-[var(--blue)] [&.yellow]:bg-[var(--yellow)] [&.green]:bg-[var(--green-pale)] [&.peach]:bg-[var(--peach)] ${a.color}  `}
-                >
-                  {a.initials}
-                </div>
-                <div>
-                  <p>
-                    <strong>{a.name}</strong> {a.text}
-                  </p>
-                  <span>{a.detail}</span>
-                </div>
-                <time>{i > 3 ? "Wczoraj" : a.time}</time>
-              </div>
-            ))}
-          </div>
+          <AdminActivity language={language} />
         </section>
       )}
       {tab === "settings" && (
@@ -618,7 +528,7 @@ export default function AdminPage({
           label={
             language === "pl"
               ? "Dzienny limit osób (1–100)"
-              : "Daily capacity (1?100)"
+              : "Daily capacity (1–100)"
           }
           type="number"
           min={1}
@@ -631,6 +541,68 @@ export default function AdminPage({
       )}
       {tab === "settings" && (
         <div className="settings-grid grid grid-cols-2 gap-[18px] max-[820px]:grid-cols-1">
+          <section className="rounded-xl border border-[var(--line)] bg-white p-6">
+            <h2 className="mb-3 font-display text-xl font-bold">
+              {language === "pl"
+                ? "Otwarcie rezerwacji na kolejny tydzień"
+                : "Next week's booking release"}
+            </h2>
+            <p className="mb-4 text-sm text-[var(--ink-soft)]">
+              {language === "pl"
+                ? "Czas Europe/Warsaw. Po otwarciu można rezerwować bieżący i kolejny tydzień."
+                : "Europe/Warsaw time. After release, members can book both the current and next week."}
+            </p>
+            <label className="mb-4 block text-sm">
+              {language === "pl" ? "Dzień tygodnia" : "Day of the week"}
+              <select
+                className="mt-2 block w-full rounded-lg border border-[var(--line)] p-2"
+                value={settings.nextWeekReleaseDay}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    nextWeekReleaseDay: Number(event.target.value),
+                  }))
+                }
+              >
+                {(language === "pl"
+                  ? [
+                      "Niedziela",
+                      "Poniedziałek",
+                      "Wtorek",
+                      "Środa",
+                      "Czwartek",
+                      "Piątek",
+                      "Sobota",
+                    ]
+                  : [
+                      "Sunday",
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday",
+                      "Friday",
+                      "Saturday",
+                    ]
+                ).map((day, index) => (
+                  <option key={day} value={index}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Field
+              label={language === "pl" ? "Godzina otwarcia" : "Release time"}
+              type="time"
+              value={settings.nextWeekReleaseTime}
+              onChange={(event) =>
+                setSettings((current) => ({
+                  ...current,
+                  nextWeekReleaseTime: event.target.value,
+                }))
+              }
+              required
+            />
+          </section>
           <section className="admin-card rounded-xl border border-[var(--line)] bg-white p-6">
             <div className="section-title font-display text-[21px] font-extrabold tracking-tight">
               Rejestracja
@@ -731,6 +703,17 @@ export default function AdminPage({
         >
           {language === "pl" ? "Zapisz ustawienia" : "Save settings"}
         </Button>
+      )}
+      {userEditor && (
+        <AdminUserEditor
+          member={userEditor === "new" ? undefined : userEditor}
+          language={language}
+          onSave={async (input, id) => {
+            await onSaveUser(input, id);
+            if (!id) setUserFilter("all");
+          }}
+          onClose={() => setUserEditor(null)}
+        />
       )}
       {postModal && (
         <div

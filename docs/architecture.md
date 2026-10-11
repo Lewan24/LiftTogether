@@ -28,7 +28,7 @@ flowchart LR
 
 ## Booking concurrency
 
-Times are minute offsets; calendar dates use PostgreSQL `date`. Current-week checks use Europe/Warsaw on the server. A booking write takes a shared lock on settings and a transaction-scoped PostgreSQL advisory lock keyed by calendar day. All API replicas using the database therefore serialize the final capacity check and insert/update for that day. The distinct-person count ignores cancelled bookings and excludes the booking owner. The unique member/date index prevents duplicate daily sessions. Updates preserve the original booking date; create requests cannot assign an arbitrary member ID. Administrators edit an existing booking to manage another member's session.
+Times are minute offsets; calendar dates use PostgreSQL `date`. Booking-window checks use Europe/Warsaw on the server. Members can book only today and future days in the current week and, after the configured release day/time (Sunday 18:00 by default), the next week. A booking write takes a shared lock on settings and a transaction-scoped PostgreSQL advisory lock keyed by calendar day. All API replicas using the database therefore serialize the final capacity check and insert/update for that day. The distinct-person count ignores cancelled bookings and excludes the booking owner. The unique member/date index prevents duplicate daily sessions. Updates preserve the original booking date; create requests cannot assign an arbitrary member ID. Administrators edit an existing booking to manage another member's session.
 
 ## Reads and scaling
 
@@ -39,3 +39,5 @@ Offset pagination is appropriate for this gym-sized application, but inserts can
 ## Persistence and upgrades
 
 The migration job has owner credentials; the runtime API uses `liftapp`, with DML permissions and no schema-owner privileges. Bootstrap only creates a first administrator and default settings/categories; there are no mock accounts. The runtime does not migrate automatically. PostgreSQL volumes persist the complete application data, including images. A separate volume persists Data Protection keys for CSRF cookies. Production secret files stay outside source control.
+
+Dashboard aggregates use dedicated authorized endpoints, rather than counting the currently loaded list pages. Week/month boundaries and member booking dates use Europe/Warsaw. Admin aggregates group active bookings by calendar date and include empty dates for averages. The member summary excludes news drafts and counts only current-week topics, replies and published news.

@@ -28,7 +28,7 @@ This is format normalization, not antivirus scanning. Add a malware scanning ser
 - Database-side counts and filters, calendar/pagination indexes, no-tracking reads, bounded list sizes and time ranges.
 - Feed images are references, never inline base64; binary image content is retrieved separately.
 - Foreign keys cascade discussion/reply deletion; category moves use a transactional bulk update.
-- Daily booking advisory locks work across API replicas and prevent overbooking under contention.
+- Daily booking advisory locks work across API replicas and prevent overbooking under contention. Per-member upload advisory locks make the daily upload quota transactional across replicas. Booking cancellation rejects stale versions.
 - PostgreSQL `xmin` checks prevent stale updates. Npgsql documents [database concurrency tokens](https://www.npgsql.org/efcore/modeling/concurrency.html).
 - Frontend pages are lazy loaded; independent initial requests run concurrently. Fetch is cancellable and times out after 15 seconds. Only language is stored locally.
 - Password hashing is deliberately expensive; rate limits bound authentication work. Connection pools and SQL timeouts are configured; upload decoding is concurrency-limited.
@@ -42,4 +42,8 @@ The application limiter is local to each API replica; enforce distributed/edge l
 
 CSP is set at Nginx. Current typography uses Google Fonts and inline styles from the UI, so those style/font sources and `style-src 'unsafe-inline'` are permitted; JavaScript remains same-origin with no inline script allowance. Self-host fonts and remove inline styling if a stricter CSP is required. Security headers must also be configured at any alternate hosting layer. Keep Adminer on localhost/SSH tunnels and disable its profile normally.
 
-Email recovery, MFA and external identity providers are not implemented. Do not invent a publicly accessible password reset without verified delivery and one-use tokens. Signed-in users can change passwords; documented operator administrator recovery requires privileged deployment access and revokes old sessions.
+Email recovery, MFA and external identity providers are not implemented. Do not invent a publicly accessible password reset without verified delivery and one-use tokens. Signed-in users can change passwords; administrators can create members and edit their profiles, verification and passwords through CSRF-protected endpoints with optimistic versions. Admin password changes revoke the member’s sessions. Roles remain fixed. Documented operator administrator recovery requires privileged deployment access and revokes old sessions.
+
+## Explicit demo builds
+
+`VITE_API_MODE=mock` is an isolated browser-only demonstration with fictional sample accounts and localStorage persistence. Its simulated login and role checks provide no security boundary. HTTP mode continues to use server authorization, HttpOnly cookies and CSRF; it never switches to demo after a failed request. See [demo limitations and deployment](demo.md).

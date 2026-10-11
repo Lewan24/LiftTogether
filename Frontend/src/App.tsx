@@ -28,7 +28,14 @@ import {
   usersPageSchema,
 } from "./services/api";
 import { getForum, type ForumData } from "./services/forum";
-import { addDays, isCurrentWeekDate, startOfWeek, toIsoDate } from "./lib/date";
+import {
+  addDays,
+  dateFromIso,
+  gymToday,
+  isBookableDate,
+  startOfWeek,
+  toIsoDate,
+} from "./lib/date";
 import type { Booking, Language, AppView } from "./types";
 import useMediaQuery from "./hooks/useMediaQuery";
 import { Sidebar, Topbar } from "./components/Navigation";
@@ -51,35 +58,35 @@ function GymApp() {
   const [language, setLanguageState] = useState<Language>(getStoredLanguage);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [settings, setSettings] = useState<GymSettings | null>(null);
-  const [users, setUsers] = useState<User[]>([]),
-    [bookings, setBookings] = useState<Booking[]>([]),
-    [posts, setPosts] = useState<Post[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [forum, setForum] = useState<ForumData>({
     categories: [],
     discussions: [],
     page: 0,
     hasMore: false,
   });
-  const [view, setViewState] = useState<AppView>("home"),
-    [menuOpen, setMenuOpen] = useState(false);
+  const [view, setViewState] = useState<AppView>("home");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [bookingModal, setBookingModal] = useState<{
     date: string;
     bookingId?: number;
   } | null>(null);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [postsPage, setPostsPage] = useState(0),
-    [postsMore, setPostsMore] = useState(false),
-    [usersPage, setUsersPage] = useState(0),
-    [usersMore, setUsersMore] = useState(false);
-  const [commentsPage, setCommentsPage] = useState(0),
-    [commentsMore, setCommentsMore] = useState(false);
-  const [loading, setLoading] = useState(true),
-    [error, setError] = useState("");
-  const mobile = useMediaQuery("(max-width: 820px)"),
-    admin = currentUser?.role === "admin";
+  const [postsPage, setPostsPage] = useState(0);
+  const [postsMore, setPostsMore] = useState(false);
+  const [usersPage, setUsersPage] = useState(0);
+  const [usersMore, setUsersMore] = useState(false);
+  const [commentsPage, setCommentsPage] = useState(0);
+  const [commentsMore, setCommentsMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const mobile = useMediaQuery("(max-width: 820px)");
+  const admin = currentUser?.role === "admin";
   const rangeRef = useRef({
-    from: toIsoDate(startOfWeek(new Date())),
-    to: toIsoDate(addDays(startOfWeek(new Date()), 6)),
+    from: toIsoDate(startOfWeek(dateFromIso(gymToday()))),
+    to: toIsoDate(addDays(startOfWeek(dateFromIso(gymToday())), 13)),
   });
   const requestSequence = useRef(0);
   const loadBookings = useCallback(
@@ -183,8 +190,8 @@ function GymApp() {
     setViewState(next);
     if (next === "home" && currentUser && (currentUser.verified || admin))
       void loadBookings(
-        toIsoDate(startOfWeek(new Date())),
-        toIsoDate(addDays(startOfWeek(new Date()), 6)),
+        toIsoDate(startOfWeek(dateFromIso(gymToday()))),
+        toIsoDate(addDays(startOfWeek(dateFromIso(gymToday())), 13)),
       ).catch((e) => setError(apiMessage(e, language)));
     if (next === "home" || next === "news")
       void loadPosts(0).catch((e) => setError(apiMessage(e, language)));
@@ -309,7 +316,11 @@ function GymApp() {
       />
     );
   const openBookingModal = (date: string, bookingId?: number) => {
-    if (!admin && (!currentUser.verified || !isCurrentWeekDate(date))) return;
+    if (
+      !admin &&
+      (!currentUser.verified || !settings || !isBookableDate(date, settings))
+    )
+      return;
     setBookingModal({ date, bookingId });
   };
   const saveBooking = async (
@@ -400,6 +411,7 @@ function GymApp() {
             openBooking={openBookingModal}
             openSchedule={() => setView("schedule")}
             openNews={() => setView("news")}
+            openForum={() => setView("forum")}
             openPost={(id) => void run(() => openPost(id))}
           />
         )}
@@ -484,6 +496,7 @@ function GymApp() {
               void run(async () => {
                 await api(`bookings/${id}/cancel`, noContent, {
                   method: "POST",
+                  body: { version: bookings.find((b) => b.id === id)?.version },
                 });
                 await loadBookings();
               })
@@ -503,9 +516,24 @@ function GymApp() {
             setForum={setForum}
             language={language}
             users={users}
-            bookings={bookings}
             posts={posts}
             settings={settings}
+            onSaveUser={async (input, id) => {
+              const saved = await api(
+                id ? `users/${id}` : "users",
+                userSchema,
+                {
+                  method: id ? "PATCH" : "POST",
+                  body: input,
+                },
+              );
+              if (saved.id === currentUser.id && input.password) {
+                window.dispatchEvent(new Event("session-expired"));
+                return;
+              }
+              await loadUsers(id ? usersPage : 0);
+              if (saved.id === currentUser.id) setCurrentUser(saved);
+            }}
             onVerify={async (user) => {
               const saved = await api(
                 `users/${user.id}/verification`,

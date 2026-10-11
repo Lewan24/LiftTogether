@@ -94,3 +94,37 @@ test("profile links reject executable schemes, credentials and lookalike hosts",
     "https://www.facebook.com/demo",
   );
 });
+
+test("Warsaw Sunday release includes current and next week at the boundary", async () => {
+  const { isBookableDate } = await import("../src/lib/date.ts");
+  const settings = { nextWeekReleaseDay: 0, nextWeekReleaseTime: "18:00" };
+  const before = new Date("2026-10-11T15:59:59Z");
+  const release = new Date("2026-10-11T16:00:00Z");
+  assert.equal(isBookableDate("2026-10-11", settings, before), true);
+  assert.equal(isBookableDate("2026-10-12", settings, before), false);
+  assert.equal(isBookableDate("2026-10-12", settings, release), true);
+  assert.equal(isBookableDate("2026-10-18", settings, release), true);
+  assert.equal(isBookableDate("2026-10-19", settings, release), false);
+  assert.equal(isBookableDate("2026-10-04", settings, release), false);
+  assert.equal(isBookableDate("2026-10-10", settings, release), false);
+  assert.equal(
+    isBookableDate("2026-10-12", settings, new Date("2026-10-12T08:00:00Z")),
+    true,
+  );
+  assert.equal(
+    isBookableDate("2026-10-19", settings, new Date("2026-10-12T08:00:00Z")),
+    false,
+  );
+  assert.equal(
+    isBookableDate(
+      "2026-10-12",
+      { ...settings, nextWeekReleaseDay: 5 },
+      new Date("2026-10-09T16:00:00Z"),
+    ),
+    true,
+  );
+  assert.equal(
+    isBookableDate("2026-12-28", settings, new Date("2026-12-27T17:00:00Z")),
+    true,
+  );
+});
