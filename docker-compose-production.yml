@@ -1,16 +1,15 @@
-name: lift-together-production
+# Paste into Portainer > Stacks > Add stack (Docker Standalone).
+# Replace every CHANGE_ME password below; use hex database passwords.
+# Set your admin email and public hostname. HTTPS proxy required (see docs).
 services:
   postgres:
     image: postgres:18-alpine
     environment:
       POSTGRES_DB: lift
       POSTGRES_USER: liftowner
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-      APP_DB_PASSWORD_FILE: /run/secrets/app_db_password
-    secrets: [postgres_password, app_db_password]
+      POSTGRES_PASSWORD: CHANGE_ME_OWNER_PASSWORD
     volumes:
       - postgres-data:/var/lib/postgresql
-      - ./Backend/docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U liftowner -d lift"]
       interval: 5s
@@ -18,42 +17,58 @@ services:
       retries: 20
     networks: [private]
     restart: unless-stopped
-  migrate:
-    image: ${API_IMAGE:-ghcr.io/your-org/lift-together-api:replace-me}
-    command: ["--migrate"]
+  # Creates the restricted API database user without a local init script.
+  db-init:
+    image: postgres:18-alpine
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Database: Host=postgres;Database=lift;Username=liftowner;Maximum Pool Size=10
-      Database__PasswordFile: /run/secrets/postgres_password
-      Bootstrap__AdminEmail: ${ADMIN_EMAIL:?Set ADMIN_EMAIL}
-      Bootstrap__AdminPasswordFile: /run/secrets/admin_password
-    secrets: [postgres_password, admin_password]
+      PGPASSWORD: CHANGE_ME_OWNER_PASSWORD
+      APP_DB_PASSWORD: CHANGE_ME_APP_PASSWORD
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        psql -h postgres -U liftowner -d lift -v ON_ERROR_STOP=1 -v app_password="$$APP_DB_PASSWORD" <<'SQL'
+        SELECT format('CREATE ROLE liftapp LOGIN PASSWORD %L', :'app_password')
+        WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'liftapp')
+        \gexec
+        GRANT CONNECT ON DATABASE lift TO liftapp;
+        GRANT USAGE ON SCHEMA public TO liftapp;
+        ALTER DEFAULT PRIVILEGES FOR ROLE liftowner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO liftapp;
+        ALTER DEFAULT PRIVILEGES FOR ROLE liftowner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO liftapp;
+        SQL
     depends_on:
       postgres: { condition: service_healthy }
     networks: [private]
-  api:
-    image: ${API_IMAGE:-ghcr.io/your-org/lift-together-api:replace-me}
+  migrate:
+    image: lewan24/lifttogether-api:latest
+    command: ["--migrate"]
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Database: Host=postgres;Database=lift;Username=liftapp;Maximum Pool Size=30
-      Database__PasswordFile: /run/secrets/app_db_password
+      ConnectionStrings__Database: Host=postgres;Database=lift;Username=liftowner;Password="CHANGE_ME_OWNER_PASSWORD";Maximum Pool Size=10
+      Bootstrap__AdminEmail: admin@example.com
+      Bootstrap__AdminPassword: CHANGE_ME_ADMIN_PASSWORD
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    networks: [private]
+  api:
+    image: lewan24/lifttogether-api:latest
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__AutoInitialize: "false"
+      ConnectionStrings__Database: Host=postgres;Database=lift;Username=liftapp;Password="CHANGE_ME_APP_PASSWORD";Maximum Pool Size=30
       Proxy__TrustedNetworks__0: 172.30.24.0/24
-      AllowedHosts: ${APP_HOST:?Set APP_HOST to the public hostname}
-    secrets: [app_db_password]
+      AllowedHosts: gym.example.com
     volumes: ["api-keys:/app/keys"]
     read_only: true
     tmpfs: ["/tmp"]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    mem_limit: 768m
-    pids_limit: 200
     depends_on:
       migrate: { condition: service_completed_successfully }
     networks: [private]
     restart: unless-stopped
   frontend:
-    image: ${FRONTEND_IMAGE:-ghcr.io/your-org/lift-together-frontend:replace-me}
-    ports: ["127.0.0.1:${FRONTEND_PORT:-8443}:8080"]
+    image: lewan24/lifttogether-web:latest
+    ports: ["127.0.0.1:8443:8080"]
     read_only: true
     tmpfs: ["/tmp"]
     cap_drop: [ALL]
@@ -62,19 +77,6 @@ services:
       api: { condition: service_healthy }
     networks: [private]
     restart: unless-stopped
-  adminer:
-    image: adminer:5
-    profiles: [tools]
-    environment: { ADMINER_DEFAULT_SERVER: postgres }
-    ports: ["127.0.0.1:${ADMINER_PORT:-8081}:8080"]
-    depends_on:
-      postgres: { condition: service_healthy }
-    networks: [private]
-    restart: unless-stopped
-secrets:
-  postgres_password: { file: ./secrets/postgres_password.txt }
-  app_db_password: { file: ./secrets/app_db_password.txt }
-  admin_password: { file: ./secrets/admin_password.txt }
 volumes:
   postgres-data:
   api-keys:
