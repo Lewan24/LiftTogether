@@ -89,4 +89,5 @@ export function saveLanguage(language: "pl" | "en") {
 
 export type AdminMemberInput = Omit<User, "id" | "role"> & {
   password?: string;
+  role?: UserRole;
 };

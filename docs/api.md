@@ -76,3 +76,5 @@ Dashboard statistics accept `period=week` (default) or `month`, with an optional
 `role` on the admin user list is optional and accepts `admin` or `user`; filtering happens before pagination. Admin user responses include `adminNotes` (up to 4000 characters). Omitting `adminNotes` in an admin update preserves the existing note; an empty string clears it. Authentication and self-profile responses never include this field.
 
 For `auth.login.failed`, the audit `target` contains JSON with `email`, `accountId` and `accountRole`; unmatched accounts have null ID/role. `actorId` is null. Older entries contain `redacted` and do not identify the attempted account.
+
+Admin create/edit inputs accept optional `role` (`user` or `admin`). Omission preserves the existing role (new accounts default to `user`). Administrator accounts must be verified. Role changes revoke the affected account’s sessions and emit `member.role` audit events; demoting the last administrator returns `LAST_ADMIN` (409).

@@ -34,7 +34,8 @@ public record AdminMemberInput(
     bool Verified,
     string? Password,
     uint Version = 0,
-    string? AdminNotes = null
+    string? AdminNotes = null,
+    string? Role = null
 );
 public record BookingInput(string Date, string Start, string End, uint Version = 0);
 public record VersionInput(uint Version);

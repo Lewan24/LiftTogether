@@ -17,6 +17,10 @@ const actions: Record<string, [string, string]> = {
   "profile.update": ["zmienił profil", "updated their profile"],
   "password.change": ["zmienił hasło", "changed their password"],
   "member.create": ["utworzył użytkownika", "created a member"],
+  "member.role": [
+    "zmienił uprawnienia administratora",
+    "changed administrator access",
+  ],
   "member.update": ["zmienił użytkownika", "updated a member"],
   "member.verify": [
     "zmienił weryfikację użytkownika",

@@ -231,7 +231,7 @@ test("admin creates and edits members and activity records actual actions", asyn
     verified: true,
     password: "Created-password-2026!",
     version: 0,
-    role: "admin",
+    role: "user",
   };
   const created = userSchema.parse(
     await mockRequest("users", { method: "POST", body: input }),
@@ -399,4 +399,54 @@ test("administration notes stay private and administrators have a separate list"
     undefined,
   );
   await assert.rejects(mockRequest("users"), code("FORBIDDEN"));
+});
+
+test("administrators can create, promote and demote accounts while preserving an administrator", async () => {
+  storage();
+  const admin = await login();
+  const page = (await mockRequest("users")) as {
+    users: Array<ReturnType<typeof userSchema.parse>>;
+  };
+  await assert.rejects(
+    mockRequest(`users/${admin.id}`, {
+      method: "PATCH",
+      body: { ...admin, role: "user" },
+    }),
+    code("LAST_ADMIN"),
+  );
+  const member = page.users.find((user) => user.role === "user")!;
+  const promoted = userSchema.parse(
+    await mockRequest(`users/${member.id}`, {
+      method: "PATCH",
+      body: { ...member, role: "admin", verified: true },
+    }),
+  );
+  assert.equal(promoted.role, "admin");
+  await assert.rejects(
+    mockRequest(`users/${member.id}`, {
+      method: "PATCH",
+      body: { ...member, role: "user" },
+    }),
+    code("CONFLICT_REFRESH"),
+  );
+  const demoted = userSchema.parse(
+    await mockRequest(`users/${member.id}`, {
+      method: "PATCH",
+      body: { ...promoted, role: "user" },
+    }),
+  );
+  assert.equal(demoted.role, "user");
+  const created = userSchema.parse(
+    await mockRequest("users", {
+      method: "POST",
+      body: {
+        ...member,
+        email: "new-admin@demo.example",
+        role: "admin",
+        verified: true,
+        password: DEMO_PASSWORD,
+      },
+    }),
+  );
+  assert.equal(created.role, "admin");
 });

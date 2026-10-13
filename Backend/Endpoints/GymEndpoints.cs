@@ -115,11 +115,25 @@ public static class GymEndpoints
     private static async Task<object> SaveMember(Guid? id, AdminMemberInput input, HttpContext context, GymDb db, IPasswordHasher<Member> hasher, CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        // Serialize role changes so concurrent demotions cannot remove every administrator.
+        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(1279874129)", cancellationToken);
+        Rules.Require(await db.Members.AnyAsync(x => x.Id == context.User.UserId() && x.Role == "admin", cancellationToken), "FORBIDDEN", 403);
         var member = id.HasValue
             ? await db.Members.SingleOrDefaultAsync(x => x.Id == id, cancellationToken) ?? throw new ApiFault(404, "NOT_FOUND")
             : new Member();
         if (id.HasValue) Rules.Version(input.Version, member.Version);
-        Rules.Require(member.Role != "admin" || input.Verified, "ADMIN_VERIFICATION");
+        var role = input.Role ?? member.Role;
+        Rules.Require(role is "admin" or "user");
+        Rules.Require(role != "admin" || input.Verified, "ADMIN_VERIFICATION");
+        var roleChanged = member.Role != role;
+        if (member.Role == "admin" && role == "user")
+            Rules.Require(await db.Members.AnyAsync(x => x.Id != member.Id && x.Role == "admin", cancellationToken), "LAST_ADMIN", 409);
+        if (roleChanged)
+        {
+            db.Record(context.User.UserId(), "member.role", System.Text.Json.JsonSerializer.Serialize(new { accountId = member.Id, previousRole = member.Role, role }));
+            await db.Sessions.Where(x => x.UserId == member.Id).ExecuteDeleteAsync(cancellationToken);
+        }
+        member.Role = role;
         Rules.Profile(member, input.FirstName, input.LastName, input.Email, input.Dormitory, input.Room, input.FacebookUrl, input.Phone);
         Rules.Require(!await db.Members.AnyAsync(x => x.Email == member.Email && x.Id != member.Id, cancellationToken), "EMAIL_IN_USE", 409);
         if (input.AdminNotes != null) member.AdminNotes = Rules.Text(input.AdminNotes, 4000, false);

@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { isDemoMode } from "./mode.ts";
 
+// Avoid compilation probes and generated functions under the strict script CSP.
+z.config({ jitless: true });
+
 const id = z.string().uuid();
 export const userSchema = z.object({
   id,
