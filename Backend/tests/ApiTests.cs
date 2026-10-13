@@ -152,22 +152,41 @@ public sealed class ApiTests
         var memberClient = await Login(factory, members[0].Email, password);
         Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.GetAsync("/api/users")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.GetAsync("/api/audit")).StatusCode);
-        var memberInput = new AdminMemberInput("Created", "Member", "created@tests.example", "DS 3", "123", "", "", true, "Created-password-2026!");
+        var memberInput = new AdminMemberInput("Created", "Member", "created@tests.example", "DS 3", "123", "", "", true, "Created-password-2026!", AdminNotes: "Identity needs confirmation");
         Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.PostAsJsonAsync("/api/users", memberInput)).StatusCode);
         var createdMember = await Json(await adminClient.PostAsJsonAsync("/api/users", memberInput));
+        Assert.Equal("Identity needs confirmation", createdMember["adminNotes"]!.GetValue<string>());
         Assert.Equal("user", createdMember["role"]!.GetValue<string>());
         var createdId = createdMember["id"]!.GetValue<Guid>();
         var createdVersion = createdMember["version"]!.GetValue<uint>();
         var createdClient = await Login(factory, memberInput.Email, memberInput.Password!);
+        var ownProfile = await Json(await createdClient.GetAsync("/api/auth/me"));
+        Assert.Null(ownProfile["adminNotes"]);
+        var adminsList = await Json(await adminClient.GetAsync("/api/users?role=admin"));
+        Assert.Contains(adminsList["users"]!.AsArray(), entry => entry!["id"]!.GetValue<Guid>() == admin.Id);
+        Assert.All(adminsList["users"]!.AsArray(), entry => Assert.Equal("admin", entry!["role"]!.GetValue<string>()));
+        Assert.Equal(HttpStatusCode.BadRequest, (await adminClient.PatchAsJsonAsync($"/api/users/{createdId}", memberInput with { AdminNotes = new string('x', 4001), Version = createdVersion })).StatusCode);
         var changedMember = await Json(await adminClient.PatchAsJsonAsync($"/api/users/{createdId}", memberInput with
         {
-            Room = "456", Password = "Reset-password-2026!", Version = createdVersion
+            AdminNotes = "Confirmed by administration", Room = "456", Password = "Reset-password-2026!", Version = createdVersion
         }));
+        Assert.Equal("Confirmed by administration", changedMember["adminNotes"]!.GetValue<string>());
         Assert.Equal("456", changedMember["room"]!.GetValue<string>());
         Assert.Null(JsonNode.Parse(await (await createdClient.GetAsync("/api/auth/me")).Content.ReadAsStringAsync()));
         Assert.Equal(HttpStatusCode.Conflict, (await adminClient.PatchAsJsonAsync($"/api/users/{createdId}", memberInput with { Version = createdVersion })).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await adminClient.PostAsJsonAsync("/api/users", memberInput)).StatusCode);
+        foreach (var attemptedEmail in new[] { admin.Email, members[0].Email, "unknown@tests.example" })
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, (await adminClient.PostAsJsonAsync("/api/auth/login", new { email = attemptedEmail, password = "Incorrect-password!" })).StatusCode);
+        }
         var auditPage = await Json(await adminClient.GetAsync("/api/audit"));
+        foreach (var (email, role) in new[] { (admin.Email, "admin"), (members[0].Email, "user"), ("unknown@tests.example", (string?)null) })
+        {
+            Assert.Contains(auditPage["entries"]!.AsArray(), entry => entry!["action"]!.GetValue<string>() == "auth.login.failed"
+                && JsonNode.Parse(entry["target"]!.GetValue<string>())!["email"]!.GetValue<string>() == email
+                && JsonNode.Parse(entry["target"]!.GetValue<string>())!["accountRole"]?.GetValue<string>() == role
+                && entry["actorId"] == null);
+        }
         Assert.Contains(auditPage["entries"]!.AsArray(), entry => entry!["action"]!.GetValue<string>() == "member.update" && entry["actorName"]!.GetValue<string>() == "Test Admin");
         Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.PostAsJsonAsync("/api/categories", new
         {

@@ -9,14 +9,15 @@ public static class GymEndpoints
     public static void MapGym(this WebApplication app)
     {
         app.MapGet("/api/public", async (GymDb db, CancellationToken cancellationToken) => Dto.Settings(await db.Settings.AsNoTracking().SingleAsync(cancellationToken)));
-        app.MapGet("/api/users", async (int? page, GymDb db, CancellationToken cancellationToken) =>
+        app.MapGet("/api/users", async (int? page, string? role, GymDb db, CancellationToken cancellationToken) =>
         {
             var pageNumber = Page(page);
-            var users = await db.Members.AsNoTracking().OrderBy(x => x.Verified).ThenBy(x => x.Id).Skip(pageNumber * 50).Take(51)
+            Rules.Require(role is null or "admin" or "user");
+            var users = await db.Members.AsNoTracking().Where(x => role == null || x.Role == role).OrderBy(x => x.Verified).ThenBy(x => x.Id).Skip(pageNumber * 50).Take(51)
                 .ToListAsync(cancellationToken);
             return new
             {
-                users = users.Take(50).Select(Dto.User),
+                users = users.Take(50).Select(Dto.AdminUser),
                 page = pageNumber,
                 hasMore = users.Count > 50
             };
@@ -36,7 +37,7 @@ public static class GymEndpoints
             member.Verified = input.Verified;
             db.Record(context.User.UserId(), "member.verify", id);
             await db.SaveChangesAsync(cancellationToken);
-            return Dto.User(member);
+            return Dto.AdminUser(member);
         })
             .RequireAuthorization("admin");
         app.MapPatch("/api/settings", async (SettingsInput input, HttpContext context, GymDb db, CancellationToken cancellationToken) =>
@@ -121,6 +122,7 @@ public static class GymEndpoints
         Rules.Require(member.Role != "admin" || input.Verified, "ADMIN_VERIFICATION");
         Rules.Profile(member, input.FirstName, input.LastName, input.Email, input.Dormitory, input.Room, input.FacebookUrl, input.Phone);
         Rules.Require(!await db.Members.AnyAsync(x => x.Email == member.Email && x.Id != member.Id, cancellationToken), "EMAIL_IN_USE", 409);
+        if (input.AdminNotes != null) member.AdminNotes = Rules.Text(input.AdminNotes, 4000, false);
         member.Verified = input.Verified;
         if (!id.HasValue || !string.IsNullOrEmpty(input.Password))
         {
@@ -132,7 +134,7 @@ public static class GymEndpoints
         db.Record(context.User.UserId(), id.HasValue ? "member.update" : "member.create", member.Id);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return Dto.User(member);
+        return Dto.AdminUser(member);
     }
     public static int Page(int? page)
     {

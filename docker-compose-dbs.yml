@@ -5,7 +5,7 @@ services:
       POSTGRES_DB: lifttogether
       POSTGRES_USER: lifttogether_app
       POSTGRES_PASSWORD: lifttogether_app
-    ports: ["127.0.0.1:5432:5432"]
+    ports: ["5432:5432"]
     volumes:
       - postgres-data:/var/lib/postgresql
     healthcheck:
@@ -17,7 +17,7 @@ services:
   adminer:
     image: adminer:5
     environment: { ADMINER_DEFAULT_SERVER: postgres }
-    ports: ["127.0.0.1:${ADMINER_PORT:-8081}:8080"]
+    ports: ["${ADMINER_PORT:-8081}:8080"]
     depends_on:
       postgres: { condition: service_healthy }
 volumes:

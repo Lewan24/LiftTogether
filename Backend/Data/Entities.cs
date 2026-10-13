@@ -12,6 +12,7 @@ public sealed class Member
     public string Room { get; set; } = "";
     public string FacebookUrl { get; set; } = "";
     public string Phone { get; set; } = "";
+    public string AdminNotes { get; set; } = "";
     public bool Verified { get; set; }
     public uint Version { get; set; }
 }

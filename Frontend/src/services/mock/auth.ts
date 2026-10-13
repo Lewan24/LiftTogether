@@ -10,10 +10,16 @@ import {
 } from "./state.ts";
 import type { User } from "./state.ts";
 
+function publicUser(user: User) {
+  const { adminNotes: _notes, ...profile } = user;
+  return profile;
+}
+
 export async function handleAuth(context: RequestContext): Promise<unknown> {
   const { state, path, method, body, user } = context;
   if (path === "public" && method === "GET") return state.settings;
-  if (path === "auth/me" && method === "GET") return user ?? null;
+  if (path === "auth/me" && method === "GET")
+    return user ? publicUser(user) : null;
   if (path === "auth/logout" && method === "POST") {
     state.currentUserId = null;
     return null;
@@ -31,7 +37,7 @@ export async function handleAuth(context: RequestContext): Promise<unknown> {
       401,
     );
     state.currentUserId = candidate.id;
-    return candidate;
+    return publicUser(candidate);
   }
   if (path === "auth/register" && method === "POST") {
     requireValue(
@@ -57,7 +63,7 @@ export async function handleAuth(context: RequestContext): Promise<unknown> {
     state.passwords[member.id] = await passwordHash(password, member.id);
     state.users.push(member);
     state.currentUserId = member.id;
-    return member;
+    return publicUser(member);
   }
   requireValue(user, "UNAUTHENTICATED", 401);
   if (path === "auth/profile" && method === "PATCH") {
@@ -69,7 +75,7 @@ export async function handleAuth(context: RequestContext): Promise<unknown> {
       409,
     );
     Object.assign(user, fields, { version: user.version + 1 });
-    return user;
+    return publicUser(user);
   }
   if (path === "auth/password" && method === "POST") {
     const current = passwordInput(body.currentPassword);

@@ -35,7 +35,8 @@ CancellationToken cancellationToken
             var result = hasher.VerifyHashedPassword(candidate, candidate.PasswordHash, input.Password!);
             if (user == null || result == PasswordVerificationResult.Failed)
             {
-                db.Record(null, "auth.login.failed", "redacted");
+                db.Record(null, "auth.login.failed", System.Text.Json.JsonSerializer.Serialize(new
+                { email, accountId = user?.Id, accountRole = user?.Role }));
                 await db.SaveChangesAsync(cancellationToken);
                 throw new ApiFault(401, "INVALID_CREDENTIALS");
             }

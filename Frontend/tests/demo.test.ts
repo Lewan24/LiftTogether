@@ -366,3 +366,37 @@ test("past dates are blocked for members; dashboard counts all records and exclu
   await login("member@demo.example");
   await assert.rejects(mockRequest("admin/statistics"), code("FORBIDDEN"));
 });
+
+test("administration notes stay private and administrators have a separate list", async () => {
+  storage();
+  await login();
+  const page = (await mockRequest("users")) as {
+    users: Array<ReturnType<typeof userSchema.parse>>;
+  };
+  const member = page.users.find((user) => user.role === "user")!;
+  const updated = userSchema.parse(
+    await mockRequest(`users/${member.id}`, {
+      method: "PATCH",
+      body: { ...member, adminNotes: "Identity needs confirmation" },
+    }),
+  );
+  assert.equal(updated.adminNotes, "Identity needs confirmation");
+  await assert.rejects(
+    mockRequest(`users/${member.id}`, {
+      method: "PATCH",
+      body: { ...updated, adminNotes: "x".repeat(4001) },
+    }),
+    code("INVALID_INPUT"),
+  );
+  const admins = (await mockRequest("users", {
+    query: { role: "admin" },
+  })) as typeof page;
+  assert.ok(admins.users.length > 0);
+  assert.ok(admins.users.every((user) => user.role === "admin"));
+  await login(member.email);
+  assert.equal(
+    userSchema.parse(await mockRequest("auth/me")).adminNotes,
+    undefined,
+  );
+  await assert.rejects(mockRequest("users"), code("FORBIDDEN"));
+});

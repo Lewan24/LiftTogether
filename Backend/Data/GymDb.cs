@@ -21,6 +21,7 @@ public sealed class GymDb(DbContextOptions<GymDb> options) : DbContext(options)
         foreach (var field in new[] {
 "FirstName", "LastName", "Dormitory", "Room", "Phone" }) m.Entity<Member>().Property<string>(field).HasMaxLength(100);
         m.Entity<Member>().Property(x => x.FacebookUrl).HasMaxLength(254);
+        m.Entity<Member>().Property(x => x.AdminNotes).HasMaxLength(4000);
         m.Entity<Member>().Property(x => x.Role).HasMaxLength(10);
         m.Entity<Member>()
             .ToTable(t => t.HasCheckConstraint("CK_Member_Role", "\"Role\" IN ('user','admin')"));

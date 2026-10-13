@@ -12,6 +12,7 @@ export type User = {
   facebookUrl: string;
   verified: boolean;
   phone?: string;
+  adminNotes?: string;
 };
 
 export type StoredBooking = {

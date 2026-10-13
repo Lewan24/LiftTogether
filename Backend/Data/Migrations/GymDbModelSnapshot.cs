@@ -315,6 +315,11 @@ namespace LiftTogether.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AdminNotes")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
                     b.Property<string>("Dormitory")
                         .IsRequired()
                         .HasMaxLength(100)

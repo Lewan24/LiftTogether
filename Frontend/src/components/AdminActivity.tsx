@@ -43,6 +43,33 @@ const actions: Record<string, [string, string]> = {
   "bootstrap.regulations": ["utworzono regulamin", "gym regulations seeded"],
 };
 
+function loginTarget(entry: AuditEntry, language: Language) {
+  if (entry.action !== "auth.login.failed") return entry.target;
+  if (entry.target === "redacted")
+    return language === "pl"
+      ? "Starszy wpis: konto nie zostało zapisane."
+      : "Older entry: the attempted account was not recorded.";
+  try {
+    const target = JSON.parse(entry.target);
+    if (typeof target.email !== "string") return entry.target;
+    const role =
+      target.accountRole === "admin"
+        ? language === "pl"
+          ? "Administrator"
+          : "Administrator"
+        : target.accountRole === "user"
+          ? language === "pl"
+            ? "Użytkownik"
+            : "Member"
+          : language === "pl"
+            ? "Brak pasującego konta"
+            : "No matching account";
+    return `${target.email} (${role})`;
+  } catch {
+    return entry.target;
+  }
+}
+
 export default function AdminActivity({
   language,
   compact = false,
@@ -102,13 +129,19 @@ export default function AdminActivity({
         >
           <div>
             <p>
-              <strong>{entry.actorName}</strong>{" "}
+              <strong>
+                {entry.action === "auth.login.failed"
+                  ? language === "pl"
+                    ? "Nieznana osoba"
+                    : "Unknown visitor"
+                  : entry.actorName}
+              </strong>{" "}
               {actions[entry.action]?.[language === "pl" ? 0 : 1] ??
                 entry.action}
             </p>
-            {!compact && (
+            {(!compact || entry.action === "auth.login.failed") && (
               <p className="mt-1 break-all text-xs text-[var(--ink-soft)]">
-                {entry.target}
+                {loginTarget(entry, language)}
               </p>
             )}
           </div>

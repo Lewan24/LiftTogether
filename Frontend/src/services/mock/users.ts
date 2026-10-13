@@ -1,5 +1,6 @@
 import {
   requireValue,
+  text,
   profile,
   passwordInput,
   passwordHash,
@@ -15,7 +16,12 @@ export async function handleUsers(context: MemberContext): Promise<unknown> {
   const admin = () => requireValue(user.role === "admin", "FORBIDDEN", 403);
   admin();
   if (path === "users" && method === "GET") {
-    const result = paginate(state.users, page);
+    const result = paginate(
+      state.users.filter(
+        (member) => !context.query.role || member.role === context.query.role,
+      ),
+      page,
+    );
     return { ...result, users: result.items };
   }
   if (
@@ -26,6 +32,10 @@ export async function handleUsers(context: MemberContext): Promise<unknown> {
       method === "PATCH" ? find(state.users, parts[1]) : undefined;
     if (existing) version(body, existing);
     const fields = profile(body);
+    const adminNotes =
+      body.adminNotes == null
+        ? (existing?.adminNotes ?? "")
+        : text(body.adminNotes, 4000, false);
     requireValue(typeof body.verified === "boolean");
     requireValue(
       !existing || existing.role !== "admin" || body.verified,
@@ -52,6 +62,7 @@ export async function handleUsers(context: MemberContext): Promise<unknown> {
       if (state.currentUserId === member.id) state.currentUserId = null;
     }
     Object.assign(member, fields, {
+      adminNotes,
       verified: body.verified,
       version: member.version + 1,
     });

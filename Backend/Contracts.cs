@@ -33,7 +33,8 @@ public record AdminMemberInput(
     string? Phone,
     bool Verified,
     string? Password,
-    uint Version = 0
+    uint Version = 0,
+    string? AdminNotes = null
 );
 public record BookingInput(string Date, string Start, string End, uint Version = 0);
 public record VersionInput(uint Version);
@@ -78,6 +79,12 @@ public static class Dto
         member.Phone,
         member.Verified,
         member.Version
+    };
+    public static object AdminUser(Member member) => new
+    {
+        member.Id, member.Role, member.FirstName, member.LastName, member.Email,
+        member.Dormitory, member.Room, member.FacebookUrl, member.Phone,
+        member.Verified, member.Version, member.AdminNotes
     };
     public static string Name(Member member) => $"{member.FirstName} {member.LastName}";
     public static string Initials(Member member) => $"{member.FirstName[0]}{member.LastName[0]}".ToUpperInvariant();

@@ -27,6 +27,7 @@ export default function AdminUserEditor({
     verified: member?.verified ?? false,
     version: member?.version ?? 0,
     password: "",
+    adminNotes: member?.adminNotes ?? "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -52,7 +53,7 @@ export default function AdminUserEditor({
       <Dialog
         close={onClose}
         label={member ? "Edit member" : "Create member"}
-        className="w-full max-w-xl rounded-xl bg-white p-6"
+        className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-5 sm:p-6"
       >
         <h2
           id="admin-user-title"
@@ -150,6 +151,21 @@ export default function AdminUserEditor({
               }
             />
             {label("Konto zweryfikowane", "Verified account")}
+          </label>
+          <label className="mb-5 flex flex-col gap-2 text-sm font-bold">
+            {label("Notatki administracji", "Administration notes")}
+            <span className="text-xs font-normal text-[var(--ink-soft)]">
+              {label(
+                "Widoczne wyłącznie dla administratorów. Maksymalnie 4000 znaków.",
+                "Only administrators can see these notes. Maximum 4000 characters.",
+              )}
+            </span>
+            <textarea
+              className="min-h-28 w-full resize-y rounded-lg border border-[var(--line-dark)] p-3 font-normal"
+              value={form.adminNotes ?? ""}
+              maxLength={4000}
+              onChange={(event) => setValue("adminNotes", event.target.value)}
+            />
           </label>
           {error && (
             <p role="alert" className="mb-4 text-red-700">

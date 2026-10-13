@@ -12,6 +12,7 @@ export const userSchema = z.object({
   room: z.string(),
   facebookUrl: z.string(),
   phone: z.string(),
+  adminNotes: z.string().max(4000).optional(),
   verified: z.boolean(),
   version: z.number().int(),
 });
