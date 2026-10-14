@@ -112,10 +112,22 @@ test("demo enforces registration, verification, ownership, capacity and stale ca
   });
   const member = await login("member@demo.example");
   const date = gymToday();
+  const existing = (
+    (await mockRequest("bookings")) as {
+      userId: string;
+      date: string;
+      version: number;
+    }[]
+  ).find((item) => item.userId === member.id && item.date === date);
   const booking = bookingSchema.parse(
     await mockRequest("bookings", {
       method: "POST",
-      body: { date, start: "07:00", end: "08:00" },
+      body: {
+        date,
+        start: "07:00",
+        end: "08:00",
+        version: existing?.version ?? 0,
+      },
     }),
   );
   assert.equal(booking.userId, member.id);
@@ -231,7 +243,7 @@ test("admin creates and edits members and activity records actual actions", asyn
     verified: true,
     password: "Created-password-2026!",
     version: 0,
-    role: "admin",
+    role: "user",
   };
   const created = userSchema.parse(
     await mockRequest("users", { method: "POST", body: input }),
@@ -365,4 +377,164 @@ test("past dates are blocked for members; dashboard counts all records and exclu
   );
   await login("member@demo.example");
   await assert.rejects(mockRequest("admin/statistics"), code("FORBIDDEN"));
+});
+
+test("administration notes stay private and administrators have a separate list", async () => {
+  storage();
+  await login();
+  const page = (await mockRequest("users")) as {
+    users: Array<ReturnType<typeof userSchema.parse>>;
+  };
+  const member = page.users.find((user) => user.role === "user")!;
+  const updated = userSchema.parse(
+    await mockRequest(`users/${member.id}`, {
+      method: "PATCH",
+      body: { ...member, adminNotes: "Identity needs confirmation" },
+    }),
+  );
+  assert.equal(updated.adminNotes, "Identity needs confirmation");
+  await assert.rejects(
+    mockRequest(`users/${member.id}`, {
+      method: "PATCH",
+      body: { ...updated, adminNotes: "x".repeat(4001) },
+    }),
+    code("INVALID_INPUT"),
+  );
+  const admins = (await mockRequest("users", {
+    query: { role: "admin" },
+  })) as typeof page;
+  assert.ok(admins.users.length > 0);
+  assert.ok(admins.users.every((user) => user.role === "admin"));
+  await login(member.email);
+  assert.equal(
+    userSchema.parse(await mockRequest("auth/me")).adminNotes,
+    undefined,
+  );
+  await assert.rejects(mockRequest("users"), code("FORBIDDEN"));
+});
+
+test("administrators can create, promote and demote accounts while preserving an administrator", async () => {
+  storage();
+  const admin = await login();
+  const page = (await mockRequest("users")) as {
+    users: Array<ReturnType<typeof userSchema.parse>>;
+  };
+  await assert.rejects(
+    mockRequest(`users/${admin.id}`, {
+      method: "PATCH",
+      body: { ...admin, role: "user" },
+    }),
+    code("LAST_ADMIN"),
+  );
+  const member = page.users.find((user) => user.role === "user")!;
+  const promoted = userSchema.parse(
+    await mockRequest(`users/${member.id}`, {
+      method: "PATCH",
+      body: { ...member, role: "admin", verified: true },
+    }),
+  );
+  assert.equal(promoted.role, "admin");
+  await assert.rejects(
+    mockRequest(`users/${member.id}`, {
+      method: "PATCH",
+      body: { ...member, role: "user" },
+    }),
+    code("CONFLICT_REFRESH"),
+  );
+  const demoted = userSchema.parse(
+    await mockRequest(`users/${member.id}`, {
+      method: "PATCH",
+      body: { ...promoted, role: "user" },
+    }),
+  );
+  assert.equal(demoted.role, "user");
+  const created = userSchema.parse(
+    await mockRequest("users", {
+      method: "POST",
+      body: {
+        ...member,
+        email: "new-admin@demo.example",
+        role: "admin",
+        verified: true,
+        password: DEMO_PASSWORD,
+      },
+    }),
+  );
+  assert.equal(created.role, "admin");
+});
+
+test("personal training stats stay private and completion is versioned and audited", async () => {
+  storage();
+  await assert.rejects(mockRequest("profile/stats"), code("UNAUTHENTICATED"));
+  const admin = await login();
+  const date = toIsoDate(addDays(dateFromIso(gymToday()), -20));
+  const booking = bookingSchema.parse(
+    await mockRequest("bookings", {
+      method: "POST",
+      body: { date, start: "07:00", end: "08:30" },
+    }),
+  );
+  await mockRequest("auth/logout", { method: "POST" });
+  await login("member@demo.example");
+  await assert.rejects(
+    mockRequest(`bookings/${booking.id}/complete`, {
+      method: "POST",
+      body: { version: booking.version },
+    }),
+    code("FORBIDDEN"),
+  );
+  const { profileStatsSchema, trainingPageSchema } =
+    await import("../src/services/contracts.ts");
+  assert.equal(
+    profileStatsSchema.parse(await mockRequest("profile/stats"))
+      .completedTrainings,
+    0,
+  );
+  await mockRequest("auth/logout", { method: "POST" });
+  await login();
+  await assert.rejects(
+    mockRequest(`bookings/${booking.id}/complete`, {
+      method: "POST",
+      body: { version: 0 },
+    }),
+    code("CONFLICT_REFRESH"),
+  );
+  await mockRequest(`bookings/${booking.id}/complete`, {
+    method: "POST",
+    body: { version: booking.version },
+  });
+  await assert.rejects(
+    mockRequest(`bookings/${booking.id}/complete`, {
+      method: "POST",
+      body: { version: booking.version },
+    }),
+    code("CONFLICT_REFRESH"),
+  );
+  const history = trainingPageSchema.parse(
+    await mockRequest("profile/trainings"),
+  );
+  assert.ok(history.bookings.every((item) => item.userId === admin.id));
+  const completed = history.bookings.find((item) => item.id === booking.id)!;
+  await assert.rejects(
+    mockRequest(`bookings/${booking.id}/cancel`, {
+      method: "POST",
+      body: { version: completed.version },
+    }),
+    code("TRAINING_ALREADY_COMPLETED"),
+  );
+  const summary = profileStatsSchema.parse(await mockRequest("profile/stats"));
+  assert.equal(summary.completedTrainings, 1);
+  assert.equal(summary.trainingMinutes, 90);
+  assert.equal(
+    summary.weekdays.find((day) => day.weekday === dateFromIso(date).getDay())
+      ?.percentage,
+    100,
+  );
+  const audit = (await mockRequest("audit")) as {
+    entries: { action: string }[];
+  };
+  assert.equal(
+    audit.entries.filter((entry) => entry.action === "booking.complete").length,
+    1,
+  );
 });

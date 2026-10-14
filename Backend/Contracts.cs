@@ -33,7 +33,9 @@ public record AdminMemberInput(
     string? Phone,
     bool Verified,
     string? Password,
-    uint Version = 0
+    uint Version = 0,
+    string? AdminNotes = null,
+    string? Role = null
 );
 public record BookingInput(string Date, string Start, string End, uint Version = 0);
 public record VersionInput(uint Version);
@@ -79,6 +81,12 @@ public static class Dto
         member.Verified,
         member.Version
     };
+    public static object AdminUser(Member member) => new
+    {
+        member.Id, member.Role, member.FirstName, member.LastName, member.Email,
+        member.Dormitory, member.Room, member.FacebookUrl, member.Phone,
+        member.Verified, member.Version, member.AdminNotes
+    };
     public static string Name(Member member) => $"{member.FirstName} {member.LastName}";
     public static string Initials(Member member) => $"{member.FirstName[0]}{member.LastName[0]}".ToUpperInvariant();
     public static object Settings(GymSettings settings) => new
@@ -103,6 +111,7 @@ public static class Dto
         End = Time(booking.EndMinute),
         Color = "green",
         booking.Cancelled,
+        booking.CompletedAt,
         booking.Version
     };
     private static string Time(int minute) => $"{minute / 60:00}:{minute % 60:00}";

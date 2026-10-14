@@ -54,3 +54,5 @@ docker run --rm -p 127.0.0.1:8443:8080 lift-together-demo
 ```
 
 The demo image serves static assets and returns 404 for `/api` without requiring an API upstream. HTTP images retain the same-origin API proxy.
+
+The profile hero and My Stats are also available in demo mode. Training confirmation uses the same ownership, version, cancellation and Warsaw end-time rules, persists `completedAt` only in isolated demo storage, and records `booking.complete` in demo activity. Existing demo bookings default to unconfirmed. HTTP sessions and statistics never use this storage.

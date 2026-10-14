@@ -19,7 +19,8 @@ import {
 } from "../components/ui";
 import type { AdminView } from "../types";
 import { safeProfileUrl } from "../lib/validation";
-import { apiMessage } from "../services/api";
+import Pagination from "../components/Pagination";
+import { api, usersPageSchema, apiMessage } from "../services/api";
 import Dialog from "../components/Dialog";
 import ForumCategories from "../components/ForumCategories";
 import ForumPage from "./ForumPage";
@@ -73,9 +74,36 @@ export default function AdminPage({
   const [editingPostId, setEditingPostId] = useState<number | null>(null);
   const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
-  const [userFilter, setUserFilter] = useState<"pending" | "active" | "all">(
-    "pending",
-  );
+  const [userFilter, setUserFilter] = useState<
+    "pending" | "active" | "all" | "admins"
+  >("pending");
+  const [admins, setAdmins] = useState<User[]>([]);
+  const [adminsPage, setAdminsPage] = useState(0);
+  const [adminsMore, setAdminsMore] = useState(false);
+  const [adminsError, setAdminsError] = useState("");
+  const [adminsLoading, setAdminsLoading] = useState(false);
+  useEffect(() => {
+    if (userFilter !== "admins") return;
+    const controller = new AbortController();
+    setAdminsLoading(true);
+    setAdminsError("");
+    void api("users", usersPageSchema, {
+      query: { page: adminsPage, role: "admin" },
+      signal: controller.signal,
+    })
+      .then((result) => {
+        setAdmins(result.users);
+        setAdminsMore(result.hasMore);
+      })
+      .catch((failure) => {
+        if (!controller.signal.aborted)
+          setAdminsError(apiMessage(failure, language));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAdminsLoading(false);
+      });
+    return () => controller.abort();
+  }, [userFilter, adminsPage, users, language]);
   const [search, setSearch] = useState("");
   const [postSearch, setPostSearch] = useState("");
   const displayedPosts = posts.filter((post) =>
@@ -86,11 +114,13 @@ export default function AdminPage({
   const members = users.filter((user) => user.role === "user");
   const pendingUsers = members.filter((user) => !user.verified);
   const filteredUsers =
-    userFilter === "pending"
-      ? pendingUsers
-      : userFilter === "active"
-        ? members.filter((user) => user.verified)
-        : users;
+    userFilter === "admins"
+      ? admins
+      : userFilter === "pending"
+        ? pendingUsers
+        : userFilter === "active"
+          ? members.filter((user) => user.verified)
+          : users;
   const displayedUsers = filteredUsers.filter((user) =>
     `${user.firstName} ${user.lastName} ${user.email} ${user.dormitory} ${user.room}`
       .toLocaleLowerCase()
@@ -204,7 +234,7 @@ export default function AdminPage({
         </p>
       )}
       {tab === "posts" && postsPagination}
-      {tab === "users" && usersPagination}
+      {tab === "users" && userFilter !== "admins" && usersPagination}
       {tab === "forum" && (
         <ForumPage
           language={language}
@@ -316,7 +346,7 @@ export default function AdminPage({
         </>
       )}
       {tab === "posts" && (
-        <section className="admin-card rounded-xl border border-[var(--line)] bg-white p-6">
+        <section className="admin-card rounded-xl border border-[var(--line)] bg-white p-4 sm:p-6">
           <div className="table-toolbar mb-5 flex items-center justify-between gap-3 max-[600px]:flex-col max-[600px]:items-stretch">
             <div className="search-box flex min-w-[280px] items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 [&_input]:min-w-0 [&_input]:w-full [&_input]:bg-transparent [&_input]:text-sm max-[600px]:min-w-0">
               <Icon name="search" />
@@ -387,7 +417,7 @@ export default function AdminPage({
         </section>
       )}
       {tab === "users" && (
-        <section className="admin-card rounded-xl border border-[var(--line)] bg-white p-6">
+        <section className="admin-card rounded-xl border border-[var(--line)] bg-white p-4 sm:p-6">
           <div className="table-toolbar mb-5 flex items-center justify-between gap-3 max-[600px]:flex-col max-[600px]:items-stretch">
             <div className="search-box flex min-w-[280px] items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 [&_input]:min-w-0 [&_input]:w-full [&_input]:bg-transparent [&_input]:text-sm max-[600px]:min-w-0">
               <Icon name="search" />
@@ -397,7 +427,11 @@ export default function AdminPage({
                 autoComplete="off"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by name, dormitory or room"
+                placeholder={
+                  language === "pl"
+                    ? "Imię, e-mail, akademik lub pokój"
+                    : "Name, email, dormitory or room"
+                }
               />
             </div>
             <Button onClick={() => setUserEditor("new")}>
@@ -424,16 +458,36 @@ export default function AdminPage({
               className={userFilter === "all" ? "active" : ""}
               onClick={() => setUserFilter("all")}
             >
-              Wszyscy
+              {language === "pl" ? "Wszyscy" : "All users"}
+            </Button>
+            <Button
+              variant="ghost"
+              className={userFilter === "admins" ? "active" : ""}
+              onClick={() => {
+                setUserFilter("admins");
+                setAdminsPage(0);
+              }}
+            >
+              {language === "pl" ? "Administracja" : "Administrators"}
             </Button>
           </div>
+          {userFilter === "admins" && adminsError && (
+            <p role="alert" className="mb-4 text-[var(--red)]">
+              {adminsError}
+            </p>
+          )}
+          {userFilter === "admins" && adminsLoading && (
+            <p role="status" className="mb-4">
+              {language === "pl" ? "Ładowanie…" : "Loading…"}
+            </p>
+          )}
           <div className="user-table [border:1px_solid_var(--line)] rounded-[10px] overflow-hidden">
             {displayedUsers.map((user) => {
               const initials =
                 `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
               return (
                 <div
-                  className="user-row grid grid-cols-[34px_minmax(0,1fr)_minmax(100px,180px)_80px_110px_80px] items-center gap-3 border-b border-[var(--line)] py-4 [&_a]:truncate [&_a]:text-xs [&_a]:text-[var(--green)] max-[1150px]:grid-cols-[34px_minmax(0,1fr)_110px] max-[1150px]:[&_a]:col-start-2 max-[1150px]:[&_.status]:col-start-2 max-[1150px]:[&_.button-secondary]:col-start-3 max-[1150px]:[&_.button-secondary]:row-span-2"
+                  className="user-row grid grid-cols-[36px_minmax(0,1fr)] items-start gap-x-3 gap-y-3 border-b border-[var(--line)] p-4 last:border-b-0 sm:p-5 xl:grid-cols-[36px_minmax(0,1fr)_minmax(0,1fr)]"
                   key={user.id}
                 >
                   <div className="mini-avatar blue grid size-[31px] shrink-0 place-items-center rounded-full text-xs font-bold text-[var(--green-dark)] [&.blue]:bg-[var(--blue)] [&.yellow]:bg-[var(--yellow)] [&.green]:bg-[var(--green-pale)] [&.peach]:bg-[var(--peach)]">
@@ -443,69 +497,100 @@ export default function AdminPage({
                     <strong>
                       {user.firstName} {user.lastName}
                     </strong>
+                    <span className="break-all">{user.email}</span>
                     <span>
-                      {user.dormitory} · pokój {user.room}
+                      {user.dormitory} · {language === "pl" ? "pokój" : "room"}{" "}
+                      {user.room}
                     </span>
+                    {user.phone && <span>{user.phone}</span>}
+                    {user.adminNotes && (
+                      <p className="mt-3 whitespace-pre-wrap break-words rounded-lg bg-[var(--green-pale)] p-3 text-sm">
+                        <strong className="block mb-1">
+                          {language === "pl"
+                            ? "Notatka administracji"
+                            : "Administration note"}
+                        </strong>
+                        {user.adminNotes}
+                      </p>
+                    )}
                   </div>
-                  <a
-                    href={safeProfileUrl(user.facebookUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {user.facebookUrl
-                      ? user.facebookUrl.replace("https://", "")
-                      : "Brak profilu"}
-                  </a>
-                  <span
-                    className={`status rounded-full bg-[var(--green-pale)] px-2 py-1 text-xs font-bold text-[var(--green)] [&.pending]:bg-[var(--yellow)] [&.pending]:text-[#715711] ${user.verified ? "" : "pending"}  `}
-                  >
-                    {user.verified ? "Aktywny" : "Oczekuje"}
-                  </span>
-                  {user.role === "admin" ? (
-                    <span>Administrator</span>
-                  ) : !user.verified ? (
-                    <Button
-                      variant="secondary"
-                      icon="check"
-                      onClick={() =>
-                        void run(() => onVerify({ ...user, verified: true }))
-                      }
+                  <div className="col-start-2 flex flex-wrap items-center gap-2 xl:col-start-3 xl:row-start-1 xl:justify-end">
+                    {user.facebookUrl && (
+                      <a
+                        className="max-w-full break-all text-sm text-[var(--green)] underline"
+                        href={safeProfileUrl(user.facebookUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {user.facebookUrl
+                          ? user.facebookUrl.replace("https://", "")
+                          : "Brak profilu"}
+                      </a>
+                    )}
+                    <span
+                      className={`status rounded-full bg-[var(--green-pale)] px-2 py-1 text-xs font-bold text-[var(--green)] [&.pending]:bg-[var(--yellow)] [&.pending]:text-[#715711] ${user.verified ? "" : "pending"}  `}
                     >
-                      Zweryfikuj
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="danger"
-                      disabled={busy}
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            language === "pl"
-                              ? "Zawiesić dostęp użytkownika?"
-                              : "Suspend this member's access?",
+                      {user.verified ? "Aktywny" : "Oczekuje"}
+                    </span>
+                    {user.role === "admin" ? (
+                      <span>Administrator</span>
+                    ) : !user.verified ? (
+                      <Button
+                        variant="secondary"
+                        icon="check"
+                        disabled={busy}
+                        onClick={() =>
+                          void run(() => onVerify({ ...user, verified: true }))
+                        }
+                      >
+                        Zweryfikuj
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="danger"
+                        disabled={busy}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              language === "pl"
+                                ? "Zawiesić dostęp użytkownika?"
+                                : "Suspend this member's access?",
+                            )
                           )
-                        )
-                          void run(() =>
-                            onVerify({ ...user, verified: false }),
-                          );
-                      }}
-                    >
-                      {language === "pl" ? "Zawieś" : "Suspend"}
+                            void run(() =>
+                              onVerify({ ...user, verified: false }),
+                            );
+                        }}
+                      >
+                        {language === "pl" ? "Zawieś" : "Suspend"}
+                      </Button>
+                    )}
+                    <Button variant="ghost" onClick={() => setUserEditor(user)}>
+                      {language === "pl" ? "Edytuj" : "Edit"}
                     </Button>
-                  )}
-                  <Button variant="ghost" onClick={() => setUserEditor(user)}>
-                    {language === "pl" ? "Edytuj" : "Edit"}
-                  </Button>
+                  </div>
                 </div>
               );
             })}
-            {displayedUsers.length === 0 && (
+            {displayedUsers.length === 0 && !adminsLoading && !adminsError && (
               <div className="empty-admin-state flex flex-col items-center gap-3 p-8 text-sm text-[var(--ink-soft)]">
                 <Icon name="user-check" />
-                <strong>Brak użytkowników w tej kategorii</strong>
+                <strong>
+                  {language === "pl"
+                    ? "Brak użytkowników w tej kategorii"
+                    : "No users in this category"}
+                </strong>
               </div>
             )}
           </div>
+          {userFilter === "admins" && (
+            <Pagination
+              language={language}
+              page={adminsPage}
+              hasMore={adminsMore}
+              onChange={setAdminsPage}
+            />
+          )}
         </section>
       )}
       {tab === "activity" && (

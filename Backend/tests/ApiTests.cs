@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.AspNetCore.Builder;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using LiftTogether.Api.Data;
@@ -152,22 +153,54 @@ public sealed class ApiTests
         var memberClient = await Login(factory, members[0].Email, password);
         Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.GetAsync("/api/users")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.GetAsync("/api/audit")).StatusCode);
-        var memberInput = new AdminMemberInput("Created", "Member", "created@tests.example", "DS 3", "123", "", "", true, "Created-password-2026!");
+        var memberInput = new AdminMemberInput("Created", "Member", "created@tests.example", "DS 3", "123", "", "", true, "Created-password-2026!", AdminNotes: "Identity needs confirmation");
         Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.PostAsJsonAsync("/api/users", memberInput)).StatusCode);
         var createdMember = await Json(await adminClient.PostAsJsonAsync("/api/users", memberInput));
+        Assert.Equal("Identity needs confirmation", createdMember["adminNotes"]!.GetValue<string>());
         Assert.Equal("user", createdMember["role"]!.GetValue<string>());
         var createdId = createdMember["id"]!.GetValue<Guid>();
         var createdVersion = createdMember["version"]!.GetValue<uint>();
+        Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.PatchAsJsonAsync($"/api/users/{members[0].Id}", memberInput with { Role = "admin" })).StatusCode);
+        var adminVersion = (await Json(await adminClient.GetAsync("/api/auth/me")))["version"]!.GetValue<uint>();
+        var adminInput = new AdminMemberInput(admin.FirstName, admin.LastName, admin.Email, admin.Dormitory, admin.Room, admin.FacebookUrl, admin.Phone, true, null, adminVersion, Role: "user");
+        Assert.Equal(HttpStatusCode.Conflict, (await adminClient.PatchAsJsonAsync($"/api/users/{admin.Id}", adminInput)).StatusCode);
+        var roleClient = await Login(factory, memberInput.Email, memberInput.Password!);
+        var promoted = await Json(await adminClient.PatchAsJsonAsync($"/api/users/{createdId}", memberInput with { Password = null, Role = "admin", Version = createdVersion }));
+        Assert.Equal("admin", promoted["role"]!.GetValue<string>());
+        Assert.Null(JsonNode.Parse(await (await roleClient.GetAsync("/api/auth/me")).Content.ReadAsStringAsync()));
+        var promotedClient = await Login(factory, memberInput.Email, memberInput.Password!);
+        var demoted = await Json(await adminClient.PatchAsJsonAsync($"/api/users/{createdId}", memberInput with { Password = null, Role = "user", Version = promoted["version"]!.GetValue<uint>() }));
+        Assert.Equal("user", demoted["role"]!.GetValue<string>());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await promotedClient.GetAsync("/api/users")).StatusCode);
+        createdVersion = demoted["version"]!.GetValue<uint>();
         var createdClient = await Login(factory, memberInput.Email, memberInput.Password!);
+        var ownProfile = await Json(await createdClient.GetAsync("/api/auth/me"));
+        Assert.Null(ownProfile["adminNotes"]);
+        var adminsList = await Json(await adminClient.GetAsync("/api/users?role=admin"));
+        Assert.Contains(adminsList["users"]!.AsArray(), entry => entry!["id"]!.GetValue<Guid>() == admin.Id);
+        Assert.All(adminsList["users"]!.AsArray(), entry => Assert.Equal("admin", entry!["role"]!.GetValue<string>()));
+        Assert.Equal(HttpStatusCode.BadRequest, (await adminClient.PatchAsJsonAsync($"/api/users/{createdId}", memberInput with { AdminNotes = new string('x', 4001), Version = createdVersion })).StatusCode);
         var changedMember = await Json(await adminClient.PatchAsJsonAsync($"/api/users/{createdId}", memberInput with
         {
-            Room = "456", Password = "Reset-password-2026!", Version = createdVersion
+            AdminNotes = "Confirmed by administration", Room = "456", Password = "Reset-password-2026!", Version = createdVersion
         }));
+        Assert.Equal("Confirmed by administration", changedMember["adminNotes"]!.GetValue<string>());
         Assert.Equal("456", changedMember["room"]!.GetValue<string>());
         Assert.Null(JsonNode.Parse(await (await createdClient.GetAsync("/api/auth/me")).Content.ReadAsStringAsync()));
         Assert.Equal(HttpStatusCode.Conflict, (await adminClient.PatchAsJsonAsync($"/api/users/{createdId}", memberInput with { Version = createdVersion })).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await adminClient.PostAsJsonAsync("/api/users", memberInput)).StatusCode);
+        foreach (var attemptedEmail in new[] { admin.Email, members[0].Email, "unknown@tests.example" })
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, (await adminClient.PostAsJsonAsync("/api/auth/login", new { email = attemptedEmail, password = "Incorrect-password!" })).StatusCode);
+        }
         var auditPage = await Json(await adminClient.GetAsync("/api/audit"));
+        foreach (var (email, role) in new[] { (admin.Email, "admin"), (members[0].Email, "user"), ("unknown@tests.example", (string?)null) })
+        {
+            Assert.Contains(auditPage["entries"]!.AsArray(), entry => entry!["action"]!.GetValue<string>() == "auth.login.failed"
+                && JsonNode.Parse(entry["target"]!.GetValue<string>())!["email"]!.GetValue<string>() == email
+                && JsonNode.Parse(entry["target"]!.GetValue<string>())!["accountRole"]?.GetValue<string>() == role
+                && entry["actorId"] == null);
+        }
         Assert.Contains(auditPage["entries"]!.AsArray(), entry => entry!["action"]!.GetValue<string>() == "member.update" && entry["actorName"]!.GetValue<string>() == "Test Admin");
         Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.PostAsJsonAsync("/api/categories", new
         {
@@ -396,6 +429,65 @@ image },
         Assert.Equal(await setup.Discussions.CountAsync(), community["forumTopics"]!.GetValue<int>());
         Assert.DoesNotContain(community["latestNews"]!.AsArray(), post => post!["id"]!.GetValue<long>() == draft["id"]!.GetValue<long>());
         Assert.Equal(await setup.Posts.CountAsync(post => post.Status == "published"), community["newsPosts"]!.GetValue<int>());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/profile/stats")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await memberClient.GetAsync("/api/profile/trainings?page=-1")).StatusCode);
+        var completedBooking = new Booking { UserId = members[0].Id, Date = Rules.Today().AddDays(-10), StartMinute = 420, EndMinute = 510 };
+        var cancelledTraining = new Booking { UserId = members[0].Id, Date = Rules.Today().AddDays(-11), StartMinute = 420, EndMinute = 480, Cancelled = true };
+        var futureTraining = new Booking { UserId = members[0].Id, Date = Rules.Today().AddDays(30), StartMinute = 420, EndMinute = 480 };
+        setup.Bookings.AddRange(completedBooking, cancelledTraining, futureTraining);
+        await setup.SaveChangesAsync();
+        Assert.Equal(HttpStatusCode.Forbidden, (await otherClient.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(completedBooking.Version))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(completedBooking.Version))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await memberClient.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(0))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await memberClient.PostAsJsonAsync($"/api/bookings/{cancelledTraining.Id}/complete", new VersionInput(cancelledTraining.Version))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await memberClient.PostAsJsonAsync($"/api/bookings/{futureTraining.Id}/complete", new VersionInput(futureTraining.Version))).StatusCode);
+        memberClient.DefaultRequestHeaders.Remove("X-CSRF-Token");
+        Assert.Equal(HttpStatusCode.BadRequest, (await memberClient.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(completedBooking.Version))).StatusCode);
+        await Csrf(memberClient);
+        Assert.True((await memberClient.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(completedBooking.Version))).IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await memberClient.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(completedBooking.Version))).StatusCode);
+        var confirmed = await setup.Bookings.AsNoTracking().SingleAsync(x => x.Id == completedBooking.Id);
+        Assert.Equal(HttpStatusCode.Conflict, (await adminClient.PatchAsJsonAsync($"/api/bookings/{confirmed.Id}", new BookingInput(confirmed.Date.ToString("yyyy-MM-dd"), "07:00", "08:00", confirmed.Version))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await adminClient.PostAsJsonAsync($"/api/bookings/{confirmed.Id}/cancel", new VersionInput(confirmed.Version))).StatusCode);
+        await setup.Members.Where(x => x.Id == members[0].Id).ExecuteUpdateAsync(update => update.SetProperty(x => x.Verified, false));
+        Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.GetAsync("/api/profile/stats")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.GetAsync("/api/profile/trainings")).StatusCode);
+        await setup.Members.Where(x => x.Id == members[0].Id).ExecuteUpdateAsync(update => update.SetProperty(x => x.Verified, true));
+        var statsCategory = await setup.Categories.AsNoTracking().Select(x => x.Id).FirstAsync();
+        var popularTopic = new Discussion { UserId = members[0].Id, CategoryId = statsCategory, Title = "Community favourite", Content = "<p>Training together</p>" };
+        var selfReplyTopic = new Discussion { UserId = members[0].Id, CategoryId = statsCategory, Title = "Own replies do not boost popularity", Content = "<p>Notes</p>" };
+        setup.Discussions.AddRange(popularTopic, selfReplyTopic);
+        setup.Replies.AddRange(
+            new ForumReply { UserId = members[1].Id, Discussion = popularTopic, Content = "First reply" },
+            new ForumReply { UserId = members[2].Id, Discussion = popularTopic, Content = "Second reply" },
+            new ForumReply { UserId = members[1].Id, Discussion = selfReplyTopic, Content = "One other member" },
+            new ForumReply { UserId = members[0].Id, Discussion = selfReplyTopic, Content = "Self reply one" },
+            new ForumReply { UserId = members[0].Id, Discussion = selfReplyTopic, Content = "Self reply two" },
+            new ForumReply { UserId = members[0].Id, Discussion = selfReplyTopic, Content = "Self reply three" });
+        await setup.SaveChangesAsync();
+        var ownStats = await Json(await memberClient.GetAsync($"/api/profile/stats?userId={members[1].Id}"));
+        Assert.Equal(1, ownStats["completedTrainings"]!.GetValue<int>());
+        Assert.Equal(90, ownStats["trainingMinutes"]!.GetValue<int>());
+        Assert.Equal(7, ownStats["weekdays"]!.AsArray().Count);
+        Assert.Equal(popularTopic.Id.ToString(), ownStats["mostPopularPost"]!["id"]!.GetValue<string>());
+        Assert.Equal(2, ownStats["mostPopularPost"]!["replies"]!.GetValue<int>());
+        var scheduledCount = await setup.Bookings.CountAsync(x => x.UserId == members[0].Id && !x.Cancelled);
+        Assert.Equal(scheduledCount, ownStats["scheduledBookings"]!.GetValue<int>());
+        foreach (var day in ownStats["weekdays"]!.AsArray())
+            Assert.Equal(Math.Round(100.0 * day!["scheduled"]!.GetValue<int>() / scheduledCount, 1), day["percentage"]!.GetValue<double>());
+        Assert.Equal(await setup.Discussions.CountAsync(x => x.UserId == members[0].Id), ownStats["forumPosts"]!.GetValue<int>());
+        Assert.Equal(await setup.Replies.CountAsync(x => x.UserId == members[0].Id), ownStats["forumComments"]!.GetValue<int>());
+        var otherStats = await Json(await otherClient.GetAsync("/api/profile/stats"));
+        Assert.Equal(0, otherStats["completedTrainings"]!.GetValue<int>());
+        var trainingHistory = await Json(await memberClient.GetAsync("/api/profile/trainings"));
+        Assert.All(trainingHistory["bookings"]!.AsArray(), item => Assert.Equal(members[0].Id.ToString(), item!["userId"]!.GetValue<string>()));
+        Assert.True(await setup.Audit.AnyAsync(x => x.Action == "booking.complete" && x.ActorId == members[0].Id));
+        var rateLimitedClient = factory.CreateClient();
+        rateLimitedClient.DefaultRequestHeaders.Add("X-Test-Client-IP", "203.0.113.100");
+        await Csrf(rateLimitedClient);
+        for (var attempt = 0; attempt < 10; attempt++)
+            Assert.Equal(HttpStatusCode.Unauthorized, (await rateLimitedClient.PostAsJsonAsync("/api/auth/login", new { email = "missing@tests.example", password = "Incorrect-password!" })).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await rateLimitedClient.PostAsJsonAsync("/api/auth/login", new { email = "missing@tests.example", password = "Incorrect-password!" })).StatusCode);
         Assert.True((await memberClient.PostAsync("/api/auth/logout", null)).IsSuccessStatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await memberClient.GetAsync("/api/bookings")).StatusCode);
         Assert.True(await setup.Audit.AnyAsync(a => a.Action == "forum.pin"));
@@ -430,9 +522,11 @@ image },
         Assert.DoesNotContain("onerror", Rules.Html("<img src=x onerror=alert(1)><p>Text</p>"));
     }
     private static IPasswordHasher<Member> Hasher() => new PasswordHasher<Member>();
+    private static int nextClientAddress;
     private static async Task<HttpClient> Login(TestApi factory, string email, string password)
     {
         var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Test-Client-IP", $"192.0.2.{Interlocked.Increment(ref nextClientAddress)}");
         await Csrf(client);
         await Json(await client.PostAsJsonAsync("/api/auth/login", new
         {
@@ -475,9 +569,25 @@ public sealed class TestApi(string connection, bool autoInitialize = false, bool
         });
         builder.ConfigureServices(services =>
         {
+            services.AddTransient<IStartupFilter, TestClientAddress>();
             services.RemoveAll<DbContextOptions<GymDb>>();
             services.RemoveAll<GymDb>();
             services.AddDbContext<GymDb>(o => o.UseNpgsql(connection));
         });
     }
+}
+
+// Model independent browser IPs inside TestServer. No production proxy trust or limits change.
+public sealed class TestClientAddress : IStartupFilter
+{
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+    {
+        app.Use(async (context, proceed) =>
+        {
+            if (IPAddress.TryParse(context.Request.Headers["X-Test-Client-IP"].ToString(), out var address))
+                context.Connection.RemoteIpAddress = address;
+            await proceed();
+        });
+        next(app);
+    };
 }

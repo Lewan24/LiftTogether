@@ -12,6 +12,7 @@ export type User = {
   facebookUrl: string;
   verified: boolean;
   phone?: string;
+  adminNotes?: string;
 };
 
 export type StoredBooking = {
@@ -88,4 +89,5 @@ export function saveLanguage(language: "pl" | "en") {
 
 export type AdminMemberInput = Omit<User, "id" | "role"> & {
   password?: string;
+  role?: UserRole;
 };

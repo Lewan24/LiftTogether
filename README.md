@@ -6,7 +6,8 @@ A campus gym application with a React 19 frontend, a .NET 10 minimal API, and Po
 
 - Register, sign in, restore sessions, update profiles, and change passwords. New members wait for administrator verification.
 - Book one session per person per day, in 30-minute intervals between 06:00 and midnight, for up to **3 hours**. The default limit is **12 distinct people across the whole day**.
-- View weekly and monthly schedules, edit bookings, cancel a session, and review daily occupancy. Administrators can manage other members' bookings.
+- View weekly and monthly schedules with a prominent Today marker and muted past days, edit bookings, cancel a session, and review daily occupancy. Administrators can manage other members' bookings.
+- Explore My Stats in your profile: confirm completed trainings, track booked gym hours, forum posts and replies, your most popular topic, and weekday booking preferences.
 - Publish announcements or save drafts; members can comment on published announcements.
 - Create forum discussions and replies with headings, bold/italic text, lists, and image attachments. Filter discussions by category or search titles, with paginated results.
 - Administrators can pin discussions, edit any discussion and its category, delete discussions and comments, verify or suspend members, manage categories, and change gym settings. Category deletion moves discussions to a selected replacement.

@@ -527,7 +527,10 @@ function GymApp() {
                   body: input,
                 },
               );
-              if (saved.id === currentUser.id && input.password) {
+              if (
+                saved.id === currentUser.id &&
+                (input.password || saved.role !== currentUser.role)
+              ) {
                 window.dispatchEvent(new Event("session-expired"));
                 return;
               }

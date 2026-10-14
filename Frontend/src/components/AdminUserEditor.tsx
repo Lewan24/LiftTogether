@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import type { AdminMemberInput, User } from "../services/storage";
 import type { Language } from "../types";
 import { apiMessage } from "../services/api";
-import { Button, Field } from "./ui";
+import { Button, Field, Icon } from "./ui";
 import Dialog from "./Dialog";
 
 export default function AdminUserEditor({
@@ -17,6 +17,7 @@ export default function AdminUserEditor({
   onClose: () => void;
 }) {
   const [form, setForm] = useState<AdminMemberInput>({
+    role: member?.role ?? "user",
     firstName: member?.firstName ?? "",
     lastName: member?.lastName ?? "",
     email: member?.email ?? "",
@@ -27,6 +28,7 @@ export default function AdminUserEditor({
     verified: member?.verified ?? false,
     version: member?.version ?? 0,
     password: "",
+    adminNotes: member?.adminNotes ?? "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,22 +50,47 @@ export default function AdminUserEditor({
   }
   const label = (pl: string, en: string) => (language === "pl" ? pl : en);
   return (
-    <div className="modal-backdrop fixed inset-0 z-40 grid place-items-center overflow-y-auto p-5">
-      <Dialog
-        close={onClose}
-        label={member ? "Edit member" : "Create member"}
-        className="w-full max-w-xl rounded-xl bg-white p-6"
-      >
-        <h2
-          id="admin-user-title"
-          className="mb-5 font-display text-xl font-bold"
+    <Dialog
+      close={onClose}
+      label={
+        member
+          ? label("Edytuj użytkownika", "Edit member")
+          : label("Utwórz użytkownika", "Create member")
+      }
+      className="max-h-[90dvh] w-[calc(100%-24px)] max-w-2xl overflow-y-auto rounded-2xl border border-[var(--line)] bg-white p-0 text-[var(--ink)] shadow-2xl"
+    >
+      <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[var(--line)] bg-white px-5 py-5 sm:px-7">
+        <div>
+          <h2 id="admin-user-title" className="font-display text-2xl font-bold">
+            {member
+              ? label("Edytuj użytkownika", "Edit member")
+              : label("Utwórz użytkownika", "Create member")}
+          </h2>
+          <p className="mt-1 text-sm text-[var(--ink-soft)]">
+            {label(
+              "Dane kontaktowe, dostęp do aplikacji i notatki zespołu.",
+              "Contact details, app access and team notes.",
+            )}
+          </p>
+        </div>
+        <Button
+          variant="icon"
+          aria-label={label("Zamknij", "Close")}
+          onClick={onClose}
+          disabled={busy}
         >
-          {member
-            ? label("Edytuj użytkownika", "Edit member")
-            : label("Utwórz użytkownika", "Create member")}
-        </h2>
-        <form onSubmit={submit}>
-          <div className="grid grid-cols-2 gap-3">
+          <Icon name="close" />
+        </Button>
+      </div>
+      <form onSubmit={submit}>
+        <fieldset disabled={busy} className="min-w-0 px-5 py-5 sm:px-7">
+          <legend className="sr-only">
+            {label("Dane użytkownika", "User details")}
+          </legend>
+          <h3 className="mb-4 font-display text-base font-bold">
+            {label("Dane użytkownika", "User details")}
+          </h3>
+          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
             <Field
               label={label("Imię", "First name")}
               value={form.firstName}
@@ -87,7 +114,7 @@ export default function AdminUserEditor({
             maxLength={254}
             required
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
             <Field
               label={label("Akademik", "Dormitory")}
               value={form.dormitory}
@@ -117,6 +144,35 @@ export default function AdminUserEditor({
             onChange={(event) => setValue("phone", event.target.value)}
             maxLength={100}
           />
+          <h3 className="mb-4 border-t border-[var(--line)] pt-5 font-display text-base font-bold">
+            {label("Dostęp do aplikacji", "App access")}
+          </h3>
+          <label className="mb-4 flex flex-col gap-2 text-sm font-bold">
+            {label("Rola konta", "Account role")}
+            <select
+              className="w-full rounded-lg border border-[var(--line-dark)] bg-white p-3 font-normal"
+              value={form.role}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  role: event.target.value as "admin" | "user",
+                  verified:
+                    event.target.value === "admin" ? true : current.verified,
+                }))
+              }
+            >
+              <option value="user">{label("Użytkownik", "Member")}</option>
+              <option value="admin">
+                {label("Administrator", "Administrator")}
+              </option>
+            </select>
+            <span className="text-xs font-normal text-[var(--ink-soft)]">
+              {label(
+                "Administrator zarządza użytkownikami, treściami i ustawieniami. Zmiana roli wyloguje użytkownika.",
+                "Administrators manage users, content and settings. Changing the role signs the user out.",
+              )}
+            </span>
+          </label>
           <Field
             label={
               member
@@ -141,7 +197,7 @@ export default function AdminUserEditor({
             <input
               type="checkbox"
               checked={form.verified}
-              disabled={member?.role === "admin"}
+              disabled={form.role === "admin"}
               onChange={(event) =>
                 setForm((current) => ({
                   ...current,
@@ -151,21 +207,36 @@ export default function AdminUserEditor({
             />
             {label("Konto zweryfikowane", "Verified account")}
           </label>
+          <label className="mb-5 flex flex-col gap-2 text-sm font-bold">
+            {label("Notatki administracji", "Administration notes")}
+            <span className="text-xs font-normal text-[var(--ink-soft)]">
+              {label(
+                "Widoczne wyłącznie dla administratorów. Maksymalnie 4000 znaków.",
+                "Only administrators can see these notes. Maximum 4000 characters.",
+              )}
+            </span>
+            <textarea
+              className="min-h-28 w-full resize-y rounded-lg border border-[var(--line-dark)] p-3 font-normal"
+              value={form.adminNotes ?? ""}
+              maxLength={4000}
+              onChange={(event) => setValue("adminNotes", event.target.value)}
+            />
+          </label>
           {error && (
             <p role="alert" className="mb-4 text-red-700">
               {error}
             </p>
           )}
-          <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={onClose} disabled={busy}>
-              {label("Anuluj", "Cancel")}
-            </Button>
-            <Button type="submit" disabled={busy}>
-              {label("Zapisz", "Save")}
-            </Button>
-          </div>
-        </form>
-      </Dialog>
-    </div>
+        </fieldset>
+        <div className="sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-[var(--line)] bg-white px-5 py-4 sm:px-7">
+          <Button variant="ghost" onClick={onClose} disabled={busy}>
+            {label("Anuluj", "Cancel")}
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {label("Zapisz", "Save")}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

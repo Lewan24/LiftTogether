@@ -17,12 +17,17 @@ const actions: Record<string, [string, string]> = {
   "profile.update": ["zmienił profil", "updated their profile"],
   "password.change": ["zmienił hasło", "changed their password"],
   "member.create": ["utworzył użytkownika", "created a member"],
+  "member.role": [
+    "zmienił uprawnienia administratora",
+    "changed administrator access",
+  ],
   "member.update": ["zmienił użytkownika", "updated a member"],
   "member.verify": [
     "zmienił weryfikację użytkownika",
     "changed member verification",
   ],
   "booking.save": ["zapisał rezerwację", "saved a booking"],
+  "booking.complete": ["ukończył trening", "completed a training"],
   "booking.cancel": ["odwołał rezerwację", "cancelled a booking"],
   "booking.delete": ["usunął rezerwację", "deleted a booking"],
   "post.create": ["utworzył aktualność", "created news"],
@@ -42,6 +47,33 @@ const actions: Record<string, [string, string]> = {
   "bootstrap.admin": ["utworzono administratora", "administrator seeded"],
   "bootstrap.regulations": ["utworzono regulamin", "gym regulations seeded"],
 };
+
+function loginTarget(entry: AuditEntry, language: Language) {
+  if (entry.action !== "auth.login.failed") return entry.target;
+  if (entry.target === "redacted")
+    return language === "pl"
+      ? "Starszy wpis: konto nie zostało zapisane."
+      : "Older entry: the attempted account was not recorded.";
+  try {
+    const target = JSON.parse(entry.target);
+    if (typeof target.email !== "string") return entry.target;
+    const role =
+      target.accountRole === "admin"
+        ? language === "pl"
+          ? "Administrator"
+          : "Administrator"
+        : target.accountRole === "user"
+          ? language === "pl"
+            ? "Użytkownik"
+            : "Member"
+          : language === "pl"
+            ? "Brak pasującego konta"
+            : "No matching account";
+    return `${target.email} (${role})`;
+  } catch {
+    return entry.target;
+  }
+}
 
 export default function AdminActivity({
   language,
@@ -102,13 +134,19 @@ export default function AdminActivity({
         >
           <div>
             <p>
-              <strong>{entry.actorName}</strong>{" "}
+              <strong>
+                {entry.action === "auth.login.failed"
+                  ? language === "pl"
+                    ? "Nieznana osoba"
+                    : "Unknown visitor"
+                  : entry.actorName}
+              </strong>{" "}
               {actions[entry.action]?.[language === "pl" ? 0 : 1] ??
                 entry.action}
             </p>
-            {!compact && (
+            {(!compact || entry.action === "auth.login.failed") && (
               <p className="mt-1 break-all text-xs text-[var(--ink-soft)]">
-                {entry.target}
+                {loginTarget(entry, language)}
               </p>
             )}
           </div>

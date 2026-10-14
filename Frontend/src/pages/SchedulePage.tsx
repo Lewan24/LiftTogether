@@ -199,8 +199,9 @@ export default function SchedulePage({
             const canManageDate = isAdmin || isBookableDate(date, settings);
             return (
               <div
-                className={`day-column min-w-[135px] border-r border-[var(--line)] last:border-r-0 [&.today]:bg-[#fbfcf8] ${date === todayIso ? "today" : ""}    ${!canManageDate ? "locked-column" : ""}  `}
+                className={`day-column relative min-w-[135px] border-r border-[var(--line)] last:border-r-0 [&.today]:bg-[var(--green-pale)] [&.past-day]:bg-[#eef0ed] [&.past-day_.day-slots]:opacity-55 ${date === todayIso ? "today after:pointer-events-none after:absolute after:inset-0 after:z-10 after:border-2 after:border-[var(--green)] after:content-['']" : ""} ${date < todayIso ? "past-day" : ""}    ${!canManageDate ? "locked-column" : ""}  `}
                 key={date}
+                aria-current={date === todayIso ? "date" : undefined}
               >
                 <Button
                   variant="ghost"
@@ -210,7 +211,17 @@ export default function SchedulePage({
                 >
                   <span>{formatDate(day, language, { weekday: "short" })}</span>
                   <strong>{day.getDate()}</strong>
-                  {date === todayIso && <i />}
+                  {date === todayIso && (
+                    <span className="rounded-full bg-[var(--green-dark)] px-3 py-1 font-bold text-white">
+                      {language === "pl" ? "Dzisiaj" : "Today"}
+                    </span>
+                  )}
+                  {date < todayIso && (
+                    <span>{language === "pl" ? "Minął" : "Past"}</span>
+                  )}
+                  {date > todayIso && !canManageDate && (
+                    <span>{language === "pl" ? "Zamknięte" : "Closed"}</span>
+                  )}
                 </Button>
                 <div className="day-slots flex flex-col gap-2 px-[7px] py-[10px] [&_.booking-card]:flex-wrap [&_.booking-card]:items-start">
                   {sortedForDate(date).map((booking) => (
@@ -218,7 +229,8 @@ export default function SchedulePage({
                       key={booking.id}
                       booking={booking}
                       onEdit={
-                        isAdmin || (booking.mine && canManageDate)
+                        !booking.completedAt &&
+                        (isAdmin || (booking.mine && canManageDate))
                           ? () => openBooking(date, booking.id)
                           : undefined
                       }
@@ -247,12 +259,23 @@ export default function SchedulePage({
             return (
               <Button
                 variant="ghost"
-                className={`month-day flex min-h-[112px] min-w-0 flex-col gap-1 border-r border-b border-[var(--line)] p-2.5 text-xs font-bold [&:nth-child(7n)]:border-r-0 [&.today_>_span]:rounded-full [&.today_>_span]:bg-[var(--green)] [&.today_>_span]:text-white [&_small]:truncate [&_small]:rounded [&_small]:bg-[var(--green-pale)] [&_small]:px-1 [&_small]:py-1 [&_small]:text-[10px] [&_small.mine]:bg-[var(--green)] [&_small.mine]:text-white [&.locked-day]:bg-[#f4f5f2] [&.locked-day]:opacity-60 max-[600px]:min-h-[70px] max-[600px]:p-1 max-[600px]:[&_small]:hidden ${date === todayIso ? "today" : ""}    ${day.getMonth() !== monthStart.getMonth() ? "muted-day bg-[#fafbfa] text-[#67776c]" : ""}    ${!isActive ? "locked-day" : ""}  `}
+                className={`month-day relative flex min-h-[112px] min-w-0 flex-col gap-1 border-r border-b border-[var(--line)] p-2.5 text-xs font-bold [&:nth-child(7n)]:border-r-0 [&.today]:bg-[var(--green-pale)] [&.past-day]:bg-[#eef0ed] [&.past-day]:text-[var(--ink-soft)] [&.today_>_span]:rounded-full [&.today_>_span]:bg-[var(--green)] [&.today_>_span]:text-white [&_small]:truncate [&_small]:rounded [&_small]:bg-[var(--green-pale)] [&_small]:px-1 [&_small]:py-1 [&_small]:text-[10px] [&_small.mine]:bg-[var(--green)] [&_small.mine]:text-white [&.locked-day]:bg-[#f4f5f2] [&.locked-day]:opacity-60 max-[600px]:min-h-[70px] max-[600px]:p-1 max-[600px]:[&_small]:hidden ${date === todayIso ? "today after:pointer-events-none after:absolute after:inset-0 after:z-10 after:border-2 after:border-[var(--green)] after:content-['']" : ""} ${date < todayIso ? "past-day" : ""}    ${day.getMonth() !== monthStart.getMonth() ? "muted-day bg-[#fafbfa] text-[#67776c]" : ""}    ${!isActive ? "locked-day" : ""}  `}
                 key={date}
+                aria-current={date === todayIso ? "date" : undefined}
                 onClick={() => isActive && openBooking(date)}
                 disabled={!isActive}
               >
-                <span>{day.getDate()}</span>
+                <span className="px-2 py-1">{day.getDate()}</span>
+                {date === todayIso && (
+                  <b className="text-[var(--green-dark)]">
+                    {language === "pl" ? "Dzisiaj" : "Today"}
+                  </b>
+                )}
+                {date < todayIso && (
+                  <b className="text-[10px]">
+                    {language === "pl" ? "Minął" : "Past"}
+                  </b>
+                )}
                 {sortedForDate(date)
                   .slice(0, 2)
                   .map((booking) => (
@@ -307,14 +330,16 @@ export default function SchedulePage({
                   <BookingCard
                     booking={booking}
                     onEdit={
-                      isAdmin || isBookableDate(booking.date, settings)
+                      !booking.completedAt &&
+                      (isAdmin || isBookableDate(booking.date, settings))
                         ? () => openBooking(booking.date, booking.id)
                         : undefined
                     }
                     onCancel={
                       !isAdmin &&
                       isBookableDate(booking.date, settings) &&
-                      !booking.cancelled
+                      !booking.cancelled &&
+                      !booking.completedAt
                         ? () => cancel(booking.id)
                         : undefined
                     }

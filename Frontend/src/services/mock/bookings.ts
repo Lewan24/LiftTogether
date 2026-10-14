@@ -9,7 +9,7 @@ import {
   remove,
   type MemberContext,
 } from "./state.ts";
-import { isBookableDate, minutes } from "../../lib/date.ts";
+import { isBookableDate, minutes, trainingFinished } from "../../lib/date.ts";
 
 export async function handleBookings(context: MemberContext): Promise<unknown> {
   const { state, method, body, query, parts, user } = context;
@@ -34,6 +34,23 @@ export async function handleBookings(context: MemberContext): Promise<unknown> {
     owner(booking.userId);
     version(body, booking);
   }
+  if (parts[2] === "complete" && method === "POST") {
+    requireValue(booking);
+    requireValue(
+      !booking.cancelled && !booking.completedAt,
+      "TRAINING_UNAVAILABLE",
+      409,
+    );
+    requireValue(
+      trainingFinished(booking.date, booking.end),
+      "TRAINING_NOT_FINISHED",
+      409,
+    );
+    booking.completedAt = new Date().toISOString();
+    booking.version++;
+    return null;
+  }
+  requireValue(!booking?.completedAt, "TRAINING_ALREADY_COMPLETED", 409);
   if (parts[2] === "cancel" && method === "POST") {
     requireValue(booking);
     requireValue(
@@ -100,6 +117,7 @@ export async function handleBookings(context: MemberContext): Promise<unknown> {
     start,
     end,
     cancelled: false,
+    completedAt: null,
     version: 1,
     color: "green",
     name: name(user),

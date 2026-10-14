@@ -16,19 +16,19 @@ export default function Dialog({
   useEffect(() => {
     const dialog = ref.current!;
     const previous = document.activeElement as HTMLElement | null;
-    dialog.showModal();
+    if (!dialog.open) dialog.showModal();
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
-      dialog.close();
+      if (dialog.open) dialog.close();
       document.body.style.overflow = overflow;
-      previous?.focus();
+      if (previous?.isConnected) previous.focus();
     };
   }, []);
   return (
     <dialog
       ref={ref}
-      className={"overscroll-contain " + (className ?? "")}
+      className={"fixed inset-0 m-auto overscroll-contain " + (className ?? "")}
       aria-label={label}
       onCancel={(event) => {
         event.preventDefault();

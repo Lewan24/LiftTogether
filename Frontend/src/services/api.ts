@@ -54,6 +54,26 @@ export async function uploadImage(file: File) {
 export function apiMessage(error: unknown, language: "pl" | "en") {
   const code = error instanceof Error ? error.message : "";
   const messages: Record<string, [string, string]> = {
+    TRAINING_NOT_FINISHED: [
+      "Trening jeszcze się nie zakończył.",
+      "This training has not ended yet.",
+    ],
+    TRAINING_UNAVAILABLE: [
+      "Trening jest anulowany lub już ukończony.",
+      "This training is cancelled or already completed.",
+    ],
+    TRAINING_ALREADY_COMPLETED: [
+      "Ukończonego treningu nie można zmienić.",
+      "Completed trainings cannot be changed.",
+    ],
+    LAST_ADMIN: [
+      "Nie można odebrać uprawnień ostatniemu administratorowi.",
+      "The last administrator must keep administrator access.",
+    ],
+    ADMIN_VERIFICATION: [
+      "Konto administratora musi być zweryfikowane.",
+      "Administrator accounts must be verified.",
+    ],
     BOOKING_WINDOW_CLOSED: [
       "Możesz rezerwować tylko dzisiaj i przyszłe dni w otwartym okresie zapisów.",
       "You can only book today and future days within the open booking window.",

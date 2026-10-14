@@ -111,3 +111,20 @@ export function gymToday(now = new Date()) {
     parts.find((part) => part.type === type)!.value;
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
+
+export function trainingFinished(date: string, end: string, now = new Date()) {
+  const today = gymToday(now);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Warsaw",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const value = (type: string) =>
+    parts.find((part) => part.type === type)!.value;
+  return (
+    date < today ||
+    (date === today &&
+      minutes(end) <= minutes(`${value("hour")}:${value("minute")}`))
+  );
+}

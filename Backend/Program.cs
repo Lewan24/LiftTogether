@@ -180,6 +180,7 @@ app.MapGet("/health/ready", async (GymDb db, CancellationToken cancellationToken
 app.MapAuth();
 app.MapGym();
 app.MapDashboard();
+app.MapTrainingStats();
 app.MapNews();
 app.MapForum();
 if (args.Contains("--migrate"))

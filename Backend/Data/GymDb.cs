@@ -21,6 +21,7 @@ public sealed class GymDb(DbContextOptions<GymDb> options) : DbContext(options)
         foreach (var field in new[] {
 "FirstName", "LastName", "Dormitory", "Room", "Phone" }) m.Entity<Member>().Property<string>(field).HasMaxLength(100);
         m.Entity<Member>().Property(x => x.FacebookUrl).HasMaxLength(254);
+        m.Entity<Member>().Property(x => x.AdminNotes).HasMaxLength(4000);
         m.Entity<Member>().Property(x => x.Role).HasMaxLength(10);
         m.Entity<Member>()
             .ToTable(t => t.HasCheckConstraint("CK_Member_Role", "\"Role\" IN ('user','admin')"));
@@ -33,6 +34,7 @@ public sealed class GymDb(DbContextOptions<GymDb> options) : DbContext(options)
         })
             .IsUnique();
         m.Entity<Booking>().HasIndex(x => x.Date);
+        m.Entity<Booking>().ToTable(t => t.HasCheckConstraint("CK_Booking_Completed", "\"CompletedAt\" IS NULL OR NOT \"Cancelled\""));
         m.Entity<Booking>()
             .ToTable(t => t.HasCheckConstraint("CK_Booking_Time", "\"StartMinute\" >= 360 AND \"EndMinute\" <= 1440 AND \"EndMinute\" - \"StartMinute\" BETWEEN 30 AND 180 AND \"StartMinute\" % 30 = 0 AND \"EndMinute\" % 30 = 0"));
         m.Entity<GymSettings>()
