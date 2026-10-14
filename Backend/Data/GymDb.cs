@@ -34,6 +34,7 @@ public sealed class GymDb(DbContextOptions<GymDb> options) : DbContext(options)
         })
             .IsUnique();
         m.Entity<Booking>().HasIndex(x => x.Date);
+        m.Entity<Booking>().ToTable(t => t.HasCheckConstraint("CK_Booking_Completed", "\"CompletedAt\" IS NULL OR NOT \"Cancelled\""));
         m.Entity<Booking>()
             .ToTable(t => t.HasCheckConstraint("CK_Booking_Time", "\"StartMinute\" >= 360 AND \"EndMinute\" <= 1440 AND \"EndMinute\" - \"StartMinute\" BETWEEN 30 AND 180 AND \"StartMinute\" % 30 = 0 AND \"EndMinute\" % 30 = 0"));
         m.Entity<GymSettings>()

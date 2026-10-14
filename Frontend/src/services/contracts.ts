@@ -42,6 +42,7 @@ export const bookingSchema = z.object({
   initials: z.string(),
   color: z.string(),
   cancelled: z.boolean(),
+  completedAt: z.string().nullable().default(null),
   version: z.number().int(),
 });
 const commentSchema = z.object({
@@ -190,3 +191,36 @@ export const statisticsSchema = z.object({
 });
 export type DashboardSummary = z.infer<typeof dashboardSchema>;
 export type AdminStatisticsData = z.infer<typeof statisticsSchema>;
+
+export const profileStatsSchema = z.object({
+  completedTrainings: z.number().int().nonnegative(),
+  trainingMinutes: z.number().int().nonnegative(),
+  scheduledBookings: z.number().int().nonnegative(),
+  cancelledBookings: z.number().int().nonnegative(),
+  forumPosts: z.number().int().nonnegative(),
+  forumComments: z.number().int().nonnegative(),
+  mostPopularPost: z
+    .object({
+      id: z.string().uuid(),
+      title: z.string(),
+      replies: z.number().int().nonnegative(),
+    })
+    .nullable(),
+  weekdays: z
+    .array(
+      z.object({
+        weekday: z.number().int().min(0).max(6),
+        scheduled: z.number().int().nonnegative(),
+        cancelled: z.number().int().nonnegative(),
+        completed: z.number().int().nonnegative(),
+        percentage: z.number().min(0).max(100),
+      }),
+    )
+    .length(7),
+});
+export const trainingPageSchema = z.object({
+  bookings: z.array(bookingSchema),
+  page: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+});
+export type ProfileStats = z.infer<typeof profileStatsSchema>;

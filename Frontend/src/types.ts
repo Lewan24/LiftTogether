@@ -12,6 +12,7 @@ export type Booking = {
   color: string;
   mine?: boolean;
   cancelled?: boolean;
+  completedAt?: string | null;
 };
 
 export type AppView =

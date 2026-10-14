@@ -121,6 +121,9 @@ namespace LiftTogether.Api.Data.Migrations
                     b.Property<bool>("Cancelled")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
@@ -148,6 +151,8 @@ namespace LiftTogether.Api.Data.Migrations
 
                     b.ToTable("Bookings", t =>
                         {
+                            t.HasCheckConstraint("CK_Booking_Completed", "\"CompletedAt\" IS NULL OR NOT \"Cancelled\"");
+
                             t.HasCheckConstraint("CK_Booking_Time", "\"StartMinute\" >= 360 AND \"EndMinute\" <= 1440 AND \"EndMinute\" - \"StartMinute\" BETWEEN 30 AND 180 AND \"StartMinute\" % 30 = 0 AND \"EndMinute\" % 30 = 0");
                         });
                 });

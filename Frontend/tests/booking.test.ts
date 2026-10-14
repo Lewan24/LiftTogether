@@ -128,3 +128,28 @@ test("Warsaw Sunday release includes current and next week at the boundary", asy
     true,
   );
 });
+
+// End-of-day sessions can only be confirmed after the gym's next midnight.
+test("training completion follows Warsaw time including midnight and winter", async () => {
+  const { trainingFinished } = await import("../src/lib/date.ts");
+  assert.equal(
+    trainingFinished("2026-10-14", "18:00", new Date("2026-10-14T15:59:00Z")),
+    false,
+  );
+  assert.equal(
+    trainingFinished("2026-10-14", "18:00", new Date("2026-10-14T16:00:00Z")),
+    true,
+  );
+  assert.equal(
+    trainingFinished("2026-10-14", "24:00", new Date("2026-10-14T21:59:00Z")),
+    false,
+  );
+  assert.equal(
+    trainingFinished("2026-10-14", "24:00", new Date("2026-10-14T22:00:00Z")),
+    true,
+  );
+  assert.equal(
+    trainingFinished("2026-12-14", "18:00", new Date("2026-12-14T16:59:00Z")),
+    false,
+  );
+});

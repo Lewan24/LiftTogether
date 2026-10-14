@@ -27,6 +27,7 @@ const actions: Record<string, [string, string]> = {
     "changed member verification",
   ],
   "booking.save": ["zapisał rezerwację", "saved a booking"],
+  "booking.complete": ["ukończył trening", "completed a training"],
   "booking.cancel": ["odwołał rezerwację", "cancelled a booking"],
   "booking.delete": ["usunął rezerwację", "deleted a booking"],
   "post.create": ["utworzył aktualność", "created news"],

@@ -1,3 +1,4 @@
+import { handleProfile } from "./mock/profile.ts";
 import { handleDashboard } from "./mock/dashboard.ts";
 import { handleSettings } from "./mock/settings.ts";
 import { ApiError } from "./http.ts";
@@ -56,6 +57,7 @@ async function route(
   requireValue(user.verified || user.role === "admin", "FORBIDDEN", 403);
   if (path === "dashboard" || path === "admin/statistics")
     return handleDashboard(memberContext);
+  if (context.parts[0] === "profile") return handleProfile(memberContext);
   switch (context.parts[0]) {
     case "bookings":
       return handleBookings(memberContext);
@@ -130,11 +132,13 @@ export function mockRequest(
             : parts[0] === "settings"
               ? "settings.update"
               : parts[0] === "bookings"
-                ? parts[2] === "cancel"
-                  ? "booking.cancel"
-                  : method === "DELETE"
-                    ? "booking.delete"
-                    : "booking.save"
+                ? parts[2] === "complete"
+                  ? "booking.complete"
+                  : parts[2] === "cancel"
+                    ? "booking.cancel"
+                    : method === "DELETE"
+                      ? "booking.delete"
+                      : "booking.save"
                 : parts[0] === "categories"
                   ? method === "DELETE"
                     ? "category.delete"

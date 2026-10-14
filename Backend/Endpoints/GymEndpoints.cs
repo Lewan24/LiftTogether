@@ -81,8 +81,20 @@ public static class GymEndpoints
             Rules.Version(input.Version, booking.Version);
             var settings = await db.Settings.AsNoTracking().SingleAsync(cancellationToken);
             Rules.Require(context.User.Admin() || Rules.BookingWindow(booking.Date, settings), "BOOKING_WINDOW_CLOSED", 403);
+            Rules.Require(booking.CompletedAt == null, "TRAINING_ALREADY_COMPLETED", 409);
             booking.Cancelled = true;
             db.Record(context.User.UserId(), "booking.cancel", id);
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.NoContent();
+        });
+        bookingRoutes.MapPost("/{id:long}/complete", async (long id, VersionInput input, HttpContext context, GymDb db, CancellationToken cancellationToken) =>
+        {
+            var booking = await db.Bookings.SingleOrDefaultAsync(x => x.Id == id, cancellationToken) ?? throw new ApiFault(404, "NOT_FOUND");
+            Owner(context, booking);
+            Rules.Version(input.Version, booking.Version);
+            TrainingStats.RequireCompletable(booking, DateTimeOffset.UtcNow);
+            booking.CompletedAt = DateTimeOffset.UtcNow;
+            db.Record(context.User.UserId(), "booking.complete", id);
             await db.SaveChangesAsync(cancellationToken);
             return Results.NoContent();
         });
@@ -176,6 +188,7 @@ public static class GymEndpoints
         {
             Owner(context, booking);
             Rules.Version(input.Version, booking.Version);
+            Rules.Require(booking.CompletedAt == null, "TRAINING_ALREADY_COMPLETED", 409);
             Rules.Require(booking.Date == date, "BOOKING_DATE_IMMUTABLE");
         }
         var owner = booking?.UserId ?? context.User.UserId();

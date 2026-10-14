@@ -112,10 +112,22 @@ test("demo enforces registration, verification, ownership, capacity and stale ca
   });
   const member = await login("member@demo.example");
   const date = gymToday();
+  const existing = (
+    (await mockRequest("bookings")) as {
+      userId: string;
+      date: string;
+      version: number;
+    }[]
+  ).find((item) => item.userId === member.id && item.date === date);
   const booking = bookingSchema.parse(
     await mockRequest("bookings", {
       method: "POST",
-      body: { date, start: "07:00", end: "08:00" },
+      body: {
+        date,
+        start: "07:00",
+        end: "08:00",
+        version: existing?.version ?? 0,
+      },
     }),
   );
   assert.equal(booking.userId, member.id);
@@ -449,4 +461,80 @@ test("administrators can create, promote and demote accounts while preserving an
     }),
   );
   assert.equal(created.role, "admin");
+});
+
+test("personal training stats stay private and completion is versioned and audited", async () => {
+  storage();
+  await assert.rejects(mockRequest("profile/stats"), code("UNAUTHENTICATED"));
+  const admin = await login();
+  const date = toIsoDate(addDays(dateFromIso(gymToday()), -20));
+  const booking = bookingSchema.parse(
+    await mockRequest("bookings", {
+      method: "POST",
+      body: { date, start: "07:00", end: "08:30" },
+    }),
+  );
+  await mockRequest("auth/logout", { method: "POST" });
+  await login("member@demo.example");
+  await assert.rejects(
+    mockRequest(`bookings/${booking.id}/complete`, {
+      method: "POST",
+      body: { version: booking.version },
+    }),
+    code("FORBIDDEN"),
+  );
+  const { profileStatsSchema, trainingPageSchema } =
+    await import("../src/services/contracts.ts");
+  assert.equal(
+    profileStatsSchema.parse(await mockRequest("profile/stats"))
+      .completedTrainings,
+    0,
+  );
+  await mockRequest("auth/logout", { method: "POST" });
+  await login();
+  await assert.rejects(
+    mockRequest(`bookings/${booking.id}/complete`, {
+      method: "POST",
+      body: { version: 0 },
+    }),
+    code("CONFLICT_REFRESH"),
+  );
+  await mockRequest(`bookings/${booking.id}/complete`, {
+    method: "POST",
+    body: { version: booking.version },
+  });
+  await assert.rejects(
+    mockRequest(`bookings/${booking.id}/complete`, {
+      method: "POST",
+      body: { version: booking.version },
+    }),
+    code("CONFLICT_REFRESH"),
+  );
+  const history = trainingPageSchema.parse(
+    await mockRequest("profile/trainings"),
+  );
+  assert.ok(history.bookings.every((item) => item.userId === admin.id));
+  const completed = history.bookings.find((item) => item.id === booking.id)!;
+  await assert.rejects(
+    mockRequest(`bookings/${booking.id}/cancel`, {
+      method: "POST",
+      body: { version: completed.version },
+    }),
+    code("TRAINING_ALREADY_COMPLETED"),
+  );
+  const summary = profileStatsSchema.parse(await mockRequest("profile/stats"));
+  assert.equal(summary.completedTrainings, 1);
+  assert.equal(summary.trainingMinutes, 90);
+  assert.equal(
+    summary.weekdays.find((day) => day.weekday === dateFromIso(date).getDay())
+      ?.percentage,
+    100,
+  );
+  const audit = (await mockRequest("audit")) as {
+    entries: { action: string }[];
+  };
+  assert.equal(
+    audit.entries.filter((entry) => entry.action === "booking.complete").length,
+    1,
+  );
 });

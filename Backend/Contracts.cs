@@ -111,6 +111,7 @@ public static class Dto
         End = Time(booking.EndMinute),
         Color = "green",
         booking.Cancelled,
+        booking.CompletedAt,
         booking.Version
     };
     private static string Time(int minute) => $"{minute / 60:00}:{minute % 60:00}";

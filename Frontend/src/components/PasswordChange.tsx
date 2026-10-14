@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { api, apiMessage, clearCsrf, noContent } from "../services/api";
-import { Button, Field } from "./ui";
+import { Button, Field, Icon } from "./ui";
 import type { Language } from "../types";
 export default function PasswordChange({ language }: { language: Language }) {
   const [currentPassword, setCurrent] = useState("");
@@ -37,28 +37,43 @@ export default function PasswordChange({ language }: { language: Language }) {
   return (
     <form
       onSubmit={submit}
-      className="mt-6 rounded-xl border border-[var(--line)] bg-white p-6"
+      aria-labelledby="password-change-title"
+      className="rounded-xl border border-[var(--line)] bg-white p-7 max-[600px]:p-5"
     >
-      <h2 className="mb-5 text-xl font-bold">
-        {pl ? "Zmień hasło" : "Change password"}
-      </h2>
+      <div className="mb-6 border-b border-[var(--line)] pb-5">
+        <div className="mb-4 grid size-10 place-items-center rounded-lg bg-[var(--green-pale)] text-[var(--green)]">
+          <Icon name="shield" size={21} />
+        </div>
+        <h2
+          id="password-change-title"
+          className="font-display text-xl font-extrabold"
+        >
+          {pl ? "Bezpieczeństwo konta" : "Account security"}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--ink-soft)]">
+          {pl
+            ? "Ustaw unikalne hasło. Po zmianie pozostałe sesje zostaną wylogowane."
+            : "Use a unique password. Changing it signs out your other sessions."}
+        </p>
+      </div>
       <Field
         label={pl ? "Obecne hasło" : "Current password"}
         type="password"
         required
         value={currentPassword}
+        name="currentPassword"
         autoComplete="current-password"
         onChange={(e) => setCurrent(e.target.value)}
       />
       <Field
-        label={
-          pl ? "Nowe hasło (12–128 znaków)" : "New password (12–128 characters)"
-        }
+        label={pl ? "Nowe hasło" : "New password"}
         type="password"
+        helper={pl ? "Od 12 do 128 znaków." : "Between 12 and 128 characters."}
         minLength={12}
         maxLength={128}
         required
         value={newPassword}
+        name="newPassword"
         autoComplete="new-password"
         onChange={(e) => setNew(e.target.value)}
       />
@@ -72,7 +87,12 @@ export default function PasswordChange({ language }: { language: Language }) {
           {message}
         </p>
       )}
-      <Button type="submit" disabled={busy}>
+      <Button
+        type="submit"
+        variant="secondary"
+        className="mt-2 w-full"
+        disabled={busy}
+      >
         {pl ? "Zmień hasło" : "Change password"}
       </Button>
     </form>

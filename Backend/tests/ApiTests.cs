@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.AspNetCore.Builder;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using LiftTogether.Api.Data;
@@ -428,6 +429,65 @@ image },
         Assert.Equal(await setup.Discussions.CountAsync(), community["forumTopics"]!.GetValue<int>());
         Assert.DoesNotContain(community["latestNews"]!.AsArray(), post => post!["id"]!.GetValue<long>() == draft["id"]!.GetValue<long>());
         Assert.Equal(await setup.Posts.CountAsync(post => post.Status == "published"), community["newsPosts"]!.GetValue<int>());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/profile/stats")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await memberClient.GetAsync("/api/profile/trainings?page=-1")).StatusCode);
+        var completedBooking = new Booking { UserId = members[0].Id, Date = Rules.Today().AddDays(-10), StartMinute = 420, EndMinute = 510 };
+        var cancelledTraining = new Booking { UserId = members[0].Id, Date = Rules.Today().AddDays(-11), StartMinute = 420, EndMinute = 480, Cancelled = true };
+        var futureTraining = new Booking { UserId = members[0].Id, Date = Rules.Today().AddDays(30), StartMinute = 420, EndMinute = 480 };
+        setup.Bookings.AddRange(completedBooking, cancelledTraining, futureTraining);
+        await setup.SaveChangesAsync();
+        Assert.Equal(HttpStatusCode.Forbidden, (await otherClient.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(completedBooking.Version))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(completedBooking.Version))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await memberClient.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(0))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await memberClient.PostAsJsonAsync($"/api/bookings/{cancelledTraining.Id}/complete", new VersionInput(cancelledTraining.Version))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await memberClient.PostAsJsonAsync($"/api/bookings/{futureTraining.Id}/complete", new VersionInput(futureTraining.Version))).StatusCode);
+        memberClient.DefaultRequestHeaders.Remove("X-CSRF-Token");
+        Assert.Equal(HttpStatusCode.BadRequest, (await memberClient.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(completedBooking.Version))).StatusCode);
+        await Csrf(memberClient);
+        Assert.True((await memberClient.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(completedBooking.Version))).IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await memberClient.PostAsJsonAsync($"/api/bookings/{completedBooking.Id}/complete", new VersionInput(completedBooking.Version))).StatusCode);
+        var confirmed = await setup.Bookings.AsNoTracking().SingleAsync(x => x.Id == completedBooking.Id);
+        Assert.Equal(HttpStatusCode.Conflict, (await adminClient.PatchAsJsonAsync($"/api/bookings/{confirmed.Id}", new BookingInput(confirmed.Date.ToString("yyyy-MM-dd"), "07:00", "08:00", confirmed.Version))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await adminClient.PostAsJsonAsync($"/api/bookings/{confirmed.Id}/cancel", new VersionInput(confirmed.Version))).StatusCode);
+        await setup.Members.Where(x => x.Id == members[0].Id).ExecuteUpdateAsync(update => update.SetProperty(x => x.Verified, false));
+        Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.GetAsync("/api/profile/stats")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await memberClient.GetAsync("/api/profile/trainings")).StatusCode);
+        await setup.Members.Where(x => x.Id == members[0].Id).ExecuteUpdateAsync(update => update.SetProperty(x => x.Verified, true));
+        var statsCategory = await setup.Categories.AsNoTracking().Select(x => x.Id).FirstAsync();
+        var popularTopic = new Discussion { UserId = members[0].Id, CategoryId = statsCategory, Title = "Community favourite", Content = "<p>Training together</p>" };
+        var selfReplyTopic = new Discussion { UserId = members[0].Id, CategoryId = statsCategory, Title = "Own replies do not boost popularity", Content = "<p>Notes</p>" };
+        setup.Discussions.AddRange(popularTopic, selfReplyTopic);
+        setup.Replies.AddRange(
+            new ForumReply { UserId = members[1].Id, Discussion = popularTopic, Content = "First reply" },
+            new ForumReply { UserId = members[2].Id, Discussion = popularTopic, Content = "Second reply" },
+            new ForumReply { UserId = members[1].Id, Discussion = selfReplyTopic, Content = "One other member" },
+            new ForumReply { UserId = members[0].Id, Discussion = selfReplyTopic, Content = "Self reply one" },
+            new ForumReply { UserId = members[0].Id, Discussion = selfReplyTopic, Content = "Self reply two" },
+            new ForumReply { UserId = members[0].Id, Discussion = selfReplyTopic, Content = "Self reply three" });
+        await setup.SaveChangesAsync();
+        var ownStats = await Json(await memberClient.GetAsync($"/api/profile/stats?userId={members[1].Id}"));
+        Assert.Equal(1, ownStats["completedTrainings"]!.GetValue<int>());
+        Assert.Equal(90, ownStats["trainingMinutes"]!.GetValue<int>());
+        Assert.Equal(7, ownStats["weekdays"]!.AsArray().Count);
+        Assert.Equal(popularTopic.Id.ToString(), ownStats["mostPopularPost"]!["id"]!.GetValue<string>());
+        Assert.Equal(2, ownStats["mostPopularPost"]!["replies"]!.GetValue<int>());
+        var scheduledCount = await setup.Bookings.CountAsync(x => x.UserId == members[0].Id && !x.Cancelled);
+        Assert.Equal(scheduledCount, ownStats["scheduledBookings"]!.GetValue<int>());
+        foreach (var day in ownStats["weekdays"]!.AsArray())
+            Assert.Equal(Math.Round(100.0 * day!["scheduled"]!.GetValue<int>() / scheduledCount, 1), day["percentage"]!.GetValue<double>());
+        Assert.Equal(await setup.Discussions.CountAsync(x => x.UserId == members[0].Id), ownStats["forumPosts"]!.GetValue<int>());
+        Assert.Equal(await setup.Replies.CountAsync(x => x.UserId == members[0].Id), ownStats["forumComments"]!.GetValue<int>());
+        var otherStats = await Json(await otherClient.GetAsync("/api/profile/stats"));
+        Assert.Equal(0, otherStats["completedTrainings"]!.GetValue<int>());
+        var trainingHistory = await Json(await memberClient.GetAsync("/api/profile/trainings"));
+        Assert.All(trainingHistory["bookings"]!.AsArray(), item => Assert.Equal(members[0].Id.ToString(), item!["userId"]!.GetValue<string>()));
+        Assert.True(await setup.Audit.AnyAsync(x => x.Action == "booking.complete" && x.ActorId == members[0].Id));
+        var rateLimitedClient = factory.CreateClient();
+        rateLimitedClient.DefaultRequestHeaders.Add("X-Test-Client-IP", "203.0.113.100");
+        await Csrf(rateLimitedClient);
+        for (var attempt = 0; attempt < 10; attempt++)
+            Assert.Equal(HttpStatusCode.Unauthorized, (await rateLimitedClient.PostAsJsonAsync("/api/auth/login", new { email = "missing@tests.example", password = "Incorrect-password!" })).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await rateLimitedClient.PostAsJsonAsync("/api/auth/login", new { email = "missing@tests.example", password = "Incorrect-password!" })).StatusCode);
         Assert.True((await memberClient.PostAsync("/api/auth/logout", null)).IsSuccessStatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await memberClient.GetAsync("/api/bookings")).StatusCode);
         Assert.True(await setup.Audit.AnyAsync(a => a.Action == "forum.pin"));
@@ -462,9 +522,11 @@ image },
         Assert.DoesNotContain("onerror", Rules.Html("<img src=x onerror=alert(1)><p>Text</p>"));
     }
     private static IPasswordHasher<Member> Hasher() => new PasswordHasher<Member>();
+    private static int nextClientAddress;
     private static async Task<HttpClient> Login(TestApi factory, string email, string password)
     {
         var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Test-Client-IP", $"192.0.2.{Interlocked.Increment(ref nextClientAddress)}");
         await Csrf(client);
         await Json(await client.PostAsJsonAsync("/api/auth/login", new
         {
@@ -507,9 +569,25 @@ public sealed class TestApi(string connection, bool autoInitialize = false, bool
         });
         builder.ConfigureServices(services =>
         {
+            services.AddTransient<IStartupFilter, TestClientAddress>();
             services.RemoveAll<DbContextOptions<GymDb>>();
             services.RemoveAll<GymDb>();
             services.AddDbContext<GymDb>(o => o.UseNpgsql(connection));
         });
     }
+}
+
+// Model independent browser IPs inside TestServer. No production proxy trust or limits change.
+public sealed class TestClientAddress : IStartupFilter
+{
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+    {
+        app.Use(async (context, proceed) =>
+        {
+            if (IPAddress.TryParse(context.Request.Headers["X-Test-Client-IP"].ToString(), out var address))
+                context.Connection.RemoteIpAddress = address;
+            await proceed();
+        });
+        next(app);
+    };
 }

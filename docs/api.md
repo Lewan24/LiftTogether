@@ -78,3 +78,11 @@ Dashboard statistics accept `period=week` (default) or `month`, with an optional
 For `auth.login.failed`, the audit `target` contains JSON with `email`, `accountId` and `accountRole`; unmatched accounts have null ID/role. `actorId` is null. Older entries contain `redacted` and do not identify the attempted account.
 
 Admin create/edit inputs accept optional `role` (`user` or `admin`). Omission preserves the existing role (new accounts default to `user`). Administrator accounts must be verified. Role changes revoke the affected account’s sessions and emit `member.role` audit events; demoting the last administrator returns `LAST_ADMIN` (409).
+
+## Personal training and statistics
+
+Verified members and administrators can use `GET /api/profile/stats` and `GET /api/profile/trainings?page=0`. Both always use the authenticated account; no client-supplied user ID selects another member. History is newest first, 50 bookings per page, with `page` and `hasMore` and normal validated page bounds. Booking responses include nullable `completedAt`.
+
+`POST /api/bookings/{id}/complete` takes `{ "version": <current booking version> }`, requires CSRF and verified access, and permits the owner or an administrator. Only non-cancelled, uncompleted bookings whose end time has passed in Europe/Warsaw can be confirmed; `24:00` ends at the following midnight. Repeated or stale requests return 409. Completion records `booking.complete` atomically with the booking update. Completed bookings cannot be edited or cancelled; administrators retain their existing delete permission.
+
+Stats return `completedTrainings`, `trainingMinutes`, `scheduledBookings` (all non-cancelled reservations, including completed and future), `cancelledBookings`, `forumPosts`, `forumComments` (forum replies only), nullable `mostPopularPost` (`id`, `title`, `replies` from other members), and seven `weekdays` (`weekday`: Sunday=0, `scheduled`, `cancelled`, `completed`, `percentage`). Popularity sorts by other members' replies with ID as a stable tie breaker. Weekday percentages divide each day's non-cancelled bookings by all non-cancelled bookings, rounded to one decimal; no bookings yields zero. Tied favourite weekdays are all highlighted. Cancellation is the existing booking status; there is no rejected-booking workflow.

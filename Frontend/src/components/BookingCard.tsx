@@ -26,6 +26,14 @@ export default function BookingCard({
           <Icon name="clock" size={14} /> {booking.start}–{booking.end}
         </span>
       </div>
+      {booking.completedAt && (
+        <span
+          className="text-xs font-bold text-[var(--green)]"
+          aria-label="Completed training"
+        >
+          <Icon name="check" size={16} />
+        </span>
+      )}
       {booking.mine && (
         <span className="you-tag rounded bg-[var(--green-pale)] px-1 py-1 text-xs font-bold text-[var(--green)]">
           TY

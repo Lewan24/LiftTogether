@@ -81,3 +81,5 @@ The old root `src/`, `tests/`, package files, Vite configuration and HTML shell 
 For static hosting without an API/database, see [demo mode and Cloudflare Pages](demo.md).
 
 Database initialization also seeds a pinned bilingual gym regulations forum topic, attributed to an administrator. The `bootstrap.regulations` audit marker makes seeding run once, preserves edits, and prevents a deliberately deleted topic from reappearing. Review and edit the starter rules in the admin forum to match your gym.
+
+Personal stats tests cover Warsaw completion boundaries (including `24:00`), ownership, authentication, CSRF, optimistic concurrency, future/cancelled bookings, account isolation, duration totals and `booking.complete` audit persistence. The integration host assigns independent test client IPs to separate browser sessions, retaining production rate limits and verifying the ten-attempt authentication limit. Demo booking tests handle a seeded booking on today's date so they remain valid on Wednesdays.

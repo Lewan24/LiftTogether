@@ -110,6 +110,7 @@ function seed(): State {
         initials: initials(member),
         color: "green",
         cancelled: false,
+        completedAt: null,
         version: 1,
       },
     ],
